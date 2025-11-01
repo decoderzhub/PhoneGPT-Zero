@@ -1,0 +1,89 @@
+# Xcode
+#
+# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+
+## User settings
+xcuserdata/
+
+## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
+*.xcscmblueprint
+*.xccheckout
+
+## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+## Obj-C/Swift specific
+*.hmap
+
+## App packaging
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+.build/
+
+# Mac
+.DS_Store
+
+# ============================================
+# IMPORTANT: EXCLUDE ALL MODEL FILES
+# ============================================
+
+# CoreML Models
+*.mlmodel
+*.mlmodelc
+*.mlpackage
+*.mlmodelc/
+PhoneGPT.mlmodelc/
+
+# Phi-3 Model Files
+phi-3-mini-4k-instruct-4bit/
+phi-3-mini-4k-instruct-4bit/*
+phi-3-mini-4k-instruct-4bit/**/*
+*/phi-3-mini-4k-instruct-4bit/
+
+# Any model weights
+model_weights/
+*.weights
+*.bin
+*.onnx
+*.pt
+*.pth
+*.h5
+*.pb
+*.tflite
+*.ckpt
+*.safetensors
+
+# Large data files
+*.db
+*.sqlite
+*.sqlite3
+
+# Personal/User Data
+messages.json
+messages_summary.txt
+my_messages.txt
+messages_export.txt
+*.docx
+*.pdf
+
+# Temporary files
+test_messages.txt
+temp/
+tmp/
+cache/*.mlmodel
