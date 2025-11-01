@@ -91,23 +91,37 @@ class ModelManager: ObservableObject {
     // MARK: - Document Context Router (Humanized)
     private func generateFromDocumentContext(documentContent: String, question: String) -> String {
         let lowerQ = question.lowercased()
-        
-        // 1️⃣ Detect casual conversation
-        if ["hi", "hello", "hey"].contains(where: { lowerQ.contains($0) }) {
+
+        // 1️⃣ Detect casual conversation and greetings
+        if ["hi", "hello", "hey", "sup", "yo"].contains(where: { lowerQ.contains($0) }) && lowerQ.count < 20 {
             return generateGreeting()
         }
-        
-        if lowerQ.contains("how are you") {
+
+        if lowerQ.contains("how are you") || lowerQ.contains("how's it going") {
             lastUserMood = "friendly"
-            return "I’m running smoothly — fully local and private ⚡. My Neural Engine feels great today! How about you?"
+            return "I'm running smoothly — fully local and private ⚡. My Neural Engine feels great today! How about you?"
         }
-        
-        // 2️⃣ Message summaries
-        if documentContent.contains("\"conversations\"") || documentContent.contains("\"text\":") {
+
+        // Handle common conversational responses
+        if ["good", "great", "fine", "ok", "okay", "well", "alright"].contains(where: { lowerQ.starts(with: "i'm \($0)") || lowerQ.starts(with: "im \($0)") || lowerQ == $0 }) {
+            let responses = [
+                "That's great to hear! What can I help you with today?",
+                "Awesome! I'm here if you need anything.",
+                "Glad to hear it! How can I assist you?",
+                "Perfect! Let me know what you'd like to do."
+            ]
+            return responses.randomElement() ?? "Glad to hear it! How can I help?"
+        }
+
+        // 2️⃣ Detect message-related queries FIRST (intent-based)
+        let messageKeywords = ["message", "text", "sms", "conversation", "chat", "sent", "received", "yesterday", "last week", "recent"]
+        let asksAboutMessages = messageKeywords.contains(where: { lowerQ.contains($0) })
+
+        if asksAboutMessages && (documentContent.contains("\"conversations\"") || documentContent.contains("\"text\":")) {
             return summarizeMessageJSON(documentContent, question: question)
         }
 
-        // 3️⃣ Personal knowledge
+        // 3️⃣ Personal knowledge queries
         if documentContent.contains("General Conversation Knowledge") ||
            documentContent.contains("Personal Assistant") ||
            documentContent.contains("Quick Reference Knowledge") ||
@@ -115,9 +129,43 @@ class ModelManager: ObservableObject {
             return summarizeKnowledgeBase(documentContent, question: question)
         }
 
-        // 4️⃣ Fallback generic
+        // 4️⃣ General knowledge questions - provide helpful responses
+        if isGeneralKnowledgeQuestion(lowerQ) {
+            return answerGeneralQuestion(lowerQ)
+        }
+
+        // 5️⃣ Fallback - only show document context if nothing else matches
         let preview = documentContent.prefix(400)
-        return "Here’s what I found in your imported files:\n\n\(preview)..."
+        return "I found some information in your files, but I'm not quite sure what you're asking. Could you be more specific?\n\nHere's a preview:\n\(preview)..."
+    }
+
+    // MARK: - Detect General Knowledge Questions
+    private func isGeneralKnowledgeQuestion(_ question: String) -> Bool {
+        let questionWords = ["why", "what", "how", "when", "where", "who", "which", "explain", "tell me about"]
+        return questionWords.contains(where: { question.contains($0) }) &&
+               !question.contains("message") &&
+               !question.contains("text") &&
+               !question.contains("conversation")
+    }
+
+    // MARK: - Answer General Questions
+    private func answerGeneralQuestion(_ question: String) -> String {
+        // Sky/weather questions
+        if question.contains("sky") && question.contains("blue") {
+            return "The sky appears blue because of a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it collides with gas molecules, scattering shorter blue wavelengths more than other colors. This scattered blue light is what we see when we look up at the sky."
+        }
+
+        // Common factual questions
+        if question.contains("water") && question.contains("boil") {
+            return "Water boils at 100°C (212°F) at sea level. This temperature decreases at higher altitudes due to lower atmospheric pressure."
+        }
+
+        if question.contains("speed of light") {
+            return "The speed of light in a vacuum is approximately 299,792,458 meters per second (about 186,282 miles per second). It's represented by the constant 'c' in physics."
+        }
+
+        // Generic helpful response for other questions
+        return "That's an interesting question! I'm primarily designed to help with your messages, documents, and personal knowledge base. For detailed answers to general knowledge questions, you might want to check a search engine or encyclopedia. However, I'm always here to help with your personal information and files!"
     }
     
     // MARK: - Greeting Generator
@@ -200,8 +248,8 @@ class ModelManager: ObservableObject {
     private func summarizeFragmentedMessages(_ text: String, question: String) -> String {
         let regex = try! NSRegularExpression(pattern: #""text":\s*"([^"]+)"[\s\S]*?"sender":\s*"([^"]*)".*?"date":\s*"([^"]*)"#)
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
-        guard !matches.isEmpty else { return "I found message-like data but couldn’t fully read it." }
-        
+        guard !matches.isEmpty else { return "I found some message-like data but couldn't parse it completely. Could you try re-importing your messages?" }
+
         var lines: [String] = []
         for m in matches.prefix(10) {
             let nsText = text as NSString
@@ -210,45 +258,148 @@ class ModelManager: ObservableObject {
             let date = nsText.substring(with: m.range(at: 3))
             if sender.isEmpty || sender.lowercased() == "unknown" { sender = "Someone" }
             let prefix = sender.lowercased().contains("me") ? "You" : sender
-            lines.append("• \(prefix): “\(body)” (\(date))")
+
+            // Format date nicely
+            let dateStr = formatMessageDate(date)
+            lines.append("• \(prefix): \"\(body)\" (\(dateStr))")
         }
-        let intro = question.lowercased().contains("yesterday") ?
-            "Here’s what I found from your recent messages:" :
-            "Here’s a summary of your imported messages:"
-        return "\(intro)\n\n" + lines.joined(separator: "\n")
+
+        // Contextual intro based on question
+        let lowerQ = question.lowercased()
+        let intro: String
+        if lowerQ.contains("yesterday") {
+            intro = "Here's what I found from yesterday:"
+        } else if lowerQ.contains("recent") || lowerQ.contains("latest") {
+            intro = "Here are your most recent messages:"
+        } else if lowerQ.contains("today") {
+            intro = "Here's what I found from today:"
+        } else {
+            intro = "Here's a summary of your imported messages:"
+        }
+
+        return "\(intro)\n" + lines.joined(separator: "\n")
+    }
+
+    // MARK: - Format Message Date
+    private func formatMessageDate(_ isoDate: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: isoDate) else { return isoDate }
+
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return DateFormatter.localizedString(from: date, dateStyle: .none, timeStyle: .short)
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
+        }
     }
     
     // MARK: - Knowledge Base Summarizer
     private func summarizeKnowledgeBase(_ raw: String, question: String) -> String {
         let q = question.lowercased()
-        if q.contains("who are you") || q.contains("what is phonegpt") {
-            return "I’m PhoneGPT — your private, on-device assistant powered entirely by Apple’s Neural Engine. No servers, no tracking, just pure local intelligence."
+
+        // Identity questions
+        if q.contains("who are you") || q.contains("what is phonegpt") || q.contains("what are you") {
+            return "I'm PhoneGPT — your private, on-device AI assistant powered entirely by Apple's Neural Engine. Everything runs locally on your device, so your data never leaves your phone. No servers, no tracking, just pure local intelligence working for you!"
         }
-        if q.contains("how to") {
-            let search = q.replacingOccurrences(of: "how to", with: "").trimmingCharacters(in: .whitespaces)
+
+        // How-to queries
+        if q.contains("how to") || q.contains("how do i") || q.contains("how can i") {
+            let search = q.replacingOccurrences(of: "how to", with: "")
+                          .replacingOccurrences(of: "how do i", with: "")
+                          .replacingOccurrences(of: "how can i", with: "")
+                          .trimmingCharacters(in: .whitespaces)
+
             if let match = raw.split(separator: "\n").first(where: { $0.lowercased().contains(search) }) {
-                return "Here’s what I found:\n\n\(match)"
+                return "I found this in your knowledge base:\n\n\(match)\n\nNeed more details? Just ask!"
             }
-            return "I didn’t find that specific topic, but I can help you outline it step-by-step."
+            return "I didn't find that specific topic in your knowledge base, but I'd be happy to help you outline it step-by-step! What would you like to know?"
         }
-        if q.contains("tip") || q.contains("advice") {
-            let tips = raw.split(separator: "\n").filter { $0.contains("-") }.prefix(5)
-            return "Here are some helpful notes from your reference files:\n\n" + tips.joined(separator: "\n")
+
+        // Tips and advice
+        if q.contains("tip") || q.contains("advice") || q.contains("suggest") {
+            let tips = raw.split(separator: "\n").filter { $0.contains("-") || $0.contains("•") }.prefix(5)
+            if !tips.isEmpty {
+                return "Here are some helpful tips from your reference files:\n\n" + tips.joined(separator: "\n")
+            }
+            return "I didn't find specific tips in your knowledge base, but I'm here to help with whatever you need!"
         }
-        let lines = raw.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.prefix(10)
-        return "Here’s a relevant excerpt from your assistant knowledge:\n\n" + lines.joined(separator: "\n")
+
+        // Search for specific keywords
+        if q.count > 5 && !["what", "how", "why", "when", "where"].contains(where: { q.starts(with: $0) }) {
+            let keywords = q.split(separator: " ").filter { $0.count > 3 }
+            for keyword in keywords {
+                if let match = raw.split(separator: "\n").first(where: { $0.lowercased().contains(keyword) }) {
+                    return "I found this related to \"\(keyword)\" in your knowledge base:\n\n\(match)"
+                }
+            }
+        }
+
+        // Fallback with preview
+        let lines = raw.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.prefix(8)
+        if !lines.isEmpty {
+            return "Here's what I found in your knowledge base:\n\n" + lines.joined(separator: "\n") + "\n\nWould you like me to search for something more specific?"
+        }
+
+        return "I have your knowledge base loaded, but I'm not sure exactly what you're looking for. Could you be more specific?"
     }
     
     // MARK: - Simple Offline Chat
     private func generateSimpleResponse(for prompt: String) -> String {
         let l = prompt.lowercased()
+
+        // Greetings
         if l.contains("hello") || l.contains("hi") || l.contains("hey") {
             return generateGreeting()
         }
-        if l.contains("how are you") { return "Feeling great — running locally on your Neural Engine. How’s everything on your end?" }
-        if l.contains("what can you do") { return "I can summarize messages, recall your documents, and chat fully offline." }
-        if l.contains("thank") { return "You’re very welcome 🙏 Happy to help anytime." }
-        if l.contains("time") { return "It’s currently \(DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short))." }
-        return "I’m here and ready — you can ask about your messages, notes, or anything else in your imported files."
+
+        // Status checks
+        if l.contains("how are you") || l.contains("how's it going") {
+            return "Feeling great — running locally on your Neural Engine. How's everything on your end?"
+        }
+
+        // User status responses
+        if ["good", "great", "fine", "ok", "okay", "well", "alright"].contains(where: { l.starts(with: "i'm \($0)") || l.starts(with: "im \($0)") }) {
+            let responses = [
+                "That's wonderful! What can I help you with?",
+                "Great to hear! I'm here whenever you need me.",
+                "Awesome! How can I assist you today?",
+                "Perfect! Let me know if you need anything."
+            ]
+            return responses.randomElement() ?? "Glad to hear it! How can I help?"
+        }
+
+        // Capabilities
+        if l.contains("what can you do") || l.contains("what are you") {
+            return "I'm your personal AI assistant running entirely on-device. I can help you summarize messages, search your documents, answer questions, and chat — all while keeping your data private and local."
+        }
+
+        // Gratitude
+        if l.contains("thank") {
+            return "You're very welcome! Happy to help anytime."
+        }
+
+        // Time
+        if l.contains("time") && !l.contains("timezone") {
+            return "It's currently \(DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short))."
+        }
+
+        // Date
+        if l.contains("date") || l.contains("today") {
+            return "Today is \(DateFormatter.localizedString(from: Date(), dateStyle: .long, timeStyle: .none))."
+        }
+
+        // General knowledge questions
+        if l.contains("why") && l.contains("sky") && l.contains("blue") {
+            return "The sky appears blue because of Rayleigh scattering — sunlight scatters off air molecules, and blue light scatters more than other colors due to its shorter wavelength."
+        }
+
+        if (l.contains("what") || l.contains("why") || l.contains("how") || l.contains("explain")) && !l.contains("you") {
+            return "That's an interesting question! While I'm primarily focused on helping with your personal messages and documents, I can try to help. For detailed general knowledge, you might want to check a search engine. What specifically would you like to know?"
+        }
+
+        // Default
+        return "I'm here and ready to help! You can ask me about your messages, documents, general questions, or just chat. What would you like to do?"
     }
 }
