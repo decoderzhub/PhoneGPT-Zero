@@ -454,17 +454,259 @@ class PersonalDataManager: NSObject, ObservableObject {
     
     func buildContext(for query: String) -> String {
         let relevantDocs = search(query: query, topK: 3)
-        
+
         guard !relevantDocs.isEmpty else {
             return ""
         }
-        
-        var context = ""
-        for doc in relevantDocs {
-            context += "From \(doc.source):\n\(doc.content)\n\n"
+
+        // Use intelligent summarization instead of raw dumps
+        return summarizeDocuments(relevantDocs, for: query)
+    }
+
+    // MARK: - Intelligent Document Summarization
+
+    /// Summarizes documents naturally using extractive + reformulation techniques
+    private func summarizeDocuments(_ docs: [VectorDocument], for query: String) -> String {
+        let queryLower = query.lowercased()
+
+        // Detect query intent
+        let isAsking = queryLower.contains("what") || queryLower.contains("who") ||
+                       queryLower.contains("where") || queryLower.contains("when") ||
+                       queryLower.contains("how") || queryLower.contains("why")
+        let wantsSummary = queryLower.contains("summarize") || queryLower.contains("summary") ||
+                          queryLower.contains("overview") || queryLower.contains("key points")
+
+        if wantsSummary {
+            return generateNaturalSummary(from: docs)
+        } else if isAsking {
+            return generateNaturalAnswer(from: docs, for: query)
+        } else {
+            return generateContextualResponse(from: docs, for: query)
         }
-        
-        return context
+    }
+
+    /// Generate natural summary by extracting and reformulating key sentences
+    private func generateNaturalSummary(from docs: [VectorDocument]) -> String {
+        // Extract key sentences from all docs
+        var keySentences: [(sentence: String, score: Double)] = []
+
+        for doc in docs {
+            let sentences = extractSentences(from: doc.content)
+            for sentence in sentences {
+                let score = calculateSentenceImportance(sentence)
+                if score > 0.3 { // Only include important sentences
+                    keySentences.append((sentence, score))
+                }
+            }
+        }
+
+        // Sort by importance and take top sentences
+        keySentences.sort { $0.score > $1.score }
+        let topSentences = keySentences.prefix(5).map { $0.sentence }
+
+        if topSentences.isEmpty {
+            return docs.map { $0.content }.joined(separator: "\n\n")
+        }
+
+        // Reformulate naturally with templates
+        var summary = "Here's what I found:\n\n"
+
+        // Group related information
+        let firstPoint = topSentences[0]
+        summary += "• \(capitalizeFirst(firstPoint))\n"
+
+        for sentence in topSentences.dropFirst() {
+            let reformulated = reformulateSentence(sentence)
+            summary += "• \(reformulated)\n"
+        }
+
+        // Add source attribution
+        if docs.count == 1 {
+            summary += "\n(from \(docs[0].source))"
+        } else {
+            summary += "\n(from \(docs.count) documents)"
+        }
+
+        return summary
+    }
+
+    /// Generate natural answer to specific questions
+    private func generateNaturalAnswer(from docs: [VectorDocument], for query: String) -> String {
+        let queryKeywords = extractKeywords(from: query)
+
+        // Find sentences containing query keywords
+        var relevantSentences: [(sentence: String, relevance: Double)] = []
+
+        for doc in docs {
+            let sentences = extractSentences(from: doc.content)
+            for sentence in sentences {
+                let relevance = calculateRelevance(sentence: sentence, to: queryKeywords)
+                if relevance > 0.4 {
+                    relevantSentences.append((sentence, relevance))
+                }
+            }
+        }
+
+        relevantSentences.sort { $0.relevance > $1.relevance }
+
+        guard let mostRelevant = relevantSentences.first else {
+            // Fallback to summary
+            return generateNaturalSummary(from: docs)
+        }
+
+        // Reformulate as natural answer
+        let queryLower = query.lowercased()
+
+        if queryLower.contains("what") {
+            return reformulateAsDefinition(mostRelevant.sentence)
+        } else if queryLower.contains("how") {
+            return reformulateAsProcess(mostRelevant.sentence)
+        } else if queryLower.contains("why") {
+            return reformulateAsReason(mostRelevant.sentence)
+        } else {
+            return capitalizeFirst(mostRelevant.sentence)
+        }
+    }
+
+    /// Generate contextual response
+    private func generateContextualResponse(from docs: [VectorDocument], for query: String) -> String {
+        // Extract most relevant information
+        let queryKeywords = extractKeywords(from: query)
+        var relevantInfo: [String] = []
+
+        for doc in docs {
+            let sentences = extractSentences(from: doc.content)
+            for sentence in sentences {
+                let relevance = calculateRelevance(sentence: sentence, to: queryKeywords)
+                if relevance > 0.5 {
+                    relevantInfo.append(sentence)
+                }
+            }
+        }
+
+        if relevantInfo.isEmpty {
+            relevantInfo = docs.map { $0.content }
+        }
+
+        // Combine naturally
+        if relevantInfo.count == 1 {
+            return capitalizeFirst(relevantInfo[0])
+        } else {
+            let combined = relevantInfo.prefix(3).map { reformulateSentence($0) }.joined(separator: " ")
+            return capitalizeFirst(combined)
+        }
+    }
+
+    // MARK: - Helper Functions for Natural Language Processing
+
+    private func extractSentences(from text: String) -> [String] {
+        // Split by sentence boundaries
+        let pattern = "[.!?]+\\s+"
+        let regex = try? NSRegularExpression(pattern: pattern)
+
+        let range = NSRange(text.startIndex..., in: text)
+        let sentences = regex?.matches(in: text, range: range).map { match -> String in
+            let endIndex = text.index(text.startIndex, offsetBy: match.range.location)
+            return String(text[..<endIndex])
+        } ?? []
+
+        // Fallback: split by periods
+        if sentences.isEmpty {
+            return text.components(separatedBy: ". ").filter { !$0.isEmpty }
+        }
+
+        return sentences.filter { $0.count > 20 } // Filter out short fragments
+    }
+
+    private func calculateSentenceImportance(_ sentence: String) -> Double {
+        var score = 0.0
+        let lower = sentence.lowercased()
+
+        // Boost sentences with important indicators
+        let importantWords = ["important", "key", "main", "primary", "essential", "critical",
+                             "first", "second", "third", "finally", "conclusion", "summary"]
+        for word in importantWords {
+            if lower.contains(word) { score += 0.2 }
+        }
+
+        // Boost sentences with numbers/data
+        if sentence.range(of: "\\d+", options: .regularExpression) != nil {
+            score += 0.15
+        }
+
+        // Penalize very short or very long sentences
+        let wordCount = sentence.components(separatedBy: .whitespaces).count
+        if wordCount > 10 && wordCount < 30 {
+            score += 0.1
+        }
+
+        return min(score, 1.0)
+    }
+
+    private func extractKeywords(from text: String) -> Set<String> {
+        let stopWords: Set<String> = ["the", "a", "an", "and", "or", "but", "in", "on", "at",
+                                      "to", "for", "of", "with", "by", "from", "is", "are",
+                                      "was", "were", "what", "how", "why", "when", "where"]
+
+        let words = text.lowercased()
+            .components(separatedBy: .whitespaces)
+            .filter { !stopWords.contains($0) && $0.count > 3 }
+
+        return Set(words)
+    }
+
+    private func calculateRelevance(sentence: String, to keywords: Set<String>) -> Double {
+        let sentenceWords = Set(sentence.lowercased().components(separatedBy: .whitespaces))
+        let matches = keywords.intersection(sentenceWords)
+        return Double(matches.count) / Double(max(keywords.count, 1))
+    }
+
+    private func reformulateSentence(_ sentence: String) -> String {
+        var result = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove redundant phrases
+        let redundant = ["it is important to note that", "it should be noted that",
+                        "as mentioned earlier", "as previously stated"]
+        for phrase in redundant {
+            result = result.replacingOccurrences(of: phrase, with: "", options: .caseInsensitive)
+        }
+
+        // Simplify complex structures
+        result = result.replacingOccurrences(of: "in order to", with: "to")
+        result = result.replacingOccurrences(of: "due to the fact that", with: "because")
+
+        return capitalizeFirst(result.trimmingCharacters(in: .whitespaces))
+    }
+
+    private func reformulateAsDefinition(_ sentence: String) -> String {
+        // Check if sentence already starts with subject
+        if sentence.lowercased().starts(with: "it ") || sentence.lowercased().starts(with: "this ") {
+            return capitalizeFirst(sentence)
+        }
+        return capitalizeFirst(sentence)
+    }
+
+    private func reformulateAsProcess(_ sentence: String) -> String {
+        // Add process framing if not present
+        let lower = sentence.lowercased()
+        if !lower.contains("by") && !lower.contains("through") && !lower.contains("using") {
+            return "This is done by \(sentence.prefix(1).lowercased() + sentence.dropFirst())"
+        }
+        return capitalizeFirst(sentence)
+    }
+
+    private func reformulateAsReason(_ sentence: String) -> String {
+        // Add causal framing
+        let lower = sentence.lowercased()
+        if !lower.contains("because") && !lower.contains("due to") && !lower.contains("since") {
+            return "This is because \(sentence.prefix(1).lowercased() + sentence.dropFirst())"
+        }
+        return capitalizeFirst(sentence)
+    }
+
+    private func capitalizeFirst(_ text: String) -> String {
+        guard !text.isEmpty else { return text }
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 }
 
