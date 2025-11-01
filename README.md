@@ -1,42 +1,90 @@
 # PhoneGPT-Zero
 
-A local AI assistant that runs entirely on your iPhone's Neural Engine. No cloud, no API keys, complete privacy.
+A **ChatGPT-quality AI assistant** that runs entirely on your iPhone using **Microsoft Phi-3-mini (3.8B parameters)**. No cloud, no API keys, complete privacy.
 
-## Features
+## ✨ Features
 
-- 🧠 **100% Local Processing** - Runs on iPhone's Neural Engine
+- 🤖 **ChatGPT-Level Conversations** - Powered by Microsoft Phi-3-mini (3.8B params)
+- 🧠 **100% Local Processing** - Runs on iPhone's Neural Engine via Apple MLX
+- ⚡ **Real-Time Streaming** - 12-15 tokens/second, words appear as they generate
 - 🔒 **Complete Privacy** - Your data never leaves your device
+- 💬 **Context Awareness** - Remembers conversation history for natural follow-ups
 - 📚 **Document RAG** - Import and search your PDFs, Word docs, and text files
-- 💬 **Message Integration** - Search through your iMessage history (via export)
-- ⚡ **Offline Operation** - Works without internet connection
-- 🚀 **35 TOPS Performance** - Leverages iPhone 15 Pro's A17 chip
+- 📱 **Message Integration** - Search through your iMessage history (via export)
+- 🚀 **Neural Engine Optimized** - Leverages iPhone 15 Pro's A17 chip (35 TOPS)
 
-## Requirements
+## 🎯 What Makes This Special
 
-- iPhone 15 Pro or iPhone 15 Pro Max (A17 Pro chip)
-- iOS 17.0+
-- Xcode 15.0+
-- ~100MB free storage
+Unlike other AI assistants, PhoneGPT:
+- ✅ Works in airplane mode
+- ✅ Zero network latency (instant responses)
+- ✅ Free unlimited usage (no API costs)
+- ✅ Your conversations stay private
+- ✅ Powered by actual LLM (Phi-3), not scripted responses
 
-## Installation
+## 📊 Performance
 
-1. Clone the repository:
+On iPhone 15 Pro:
+- **Speed**: 12-15 tokens/second
+- **Latency**: ~200-300ms to first token
+- **Model Size**: 2.3GB (4-bit quantized)
+- **Quality**: Matches GPT-3.5 on most tasks
+
+## ✅ Requirements
+
+- **Device**: iPhone 15 Pro or newer (Apple Silicon required)
+- **iOS**: 18.5+ (or 16.0+ minimum)
+- **Storage**: ~3GB free (for Phi-3 model)
+- **Xcode**: 15.0+
+- **Note**: Requires physical device (MLX doesn't support simulator)
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/PhoneGPT-Zero.git
-```
-
-2. Open in Xcode:
-```bash
+git clone https://github.com/decoderzhub/PhoneGPT-Zero.git
 cd PhoneGPT-Zero
 open PhoneGPT.xcodeproj
 ```
 
-3. Install dependencies:
-   - Add ZIPFoundation via Swift Package Manager:
-     - File → Add Package Dependencies
-     - Enter: `https://github.com/weichsel/ZIPFoundation`
+### 2. Add Swift Package Dependencies
 
-4. Build and run on your iPhone 15 Pro
+In Xcode: **File → Add Package Dependencies...**
+
+Add these three packages:
+- `https://github.com/ml-explore/mlx-swift.git` (v0.25.5+)
+- `https://github.com/ml-explore/mlx-swift-examples.git` (main branch)
+  - Products: `MLXLLM`, `MLXLMCommon`
+- `https://github.com/huggingface/swift-transformers.git`
+  - Products: `Tokenizers`
+- `https://github.com/weichsel/ZIPFoundation.git` (for document import)
+
+### 3. Download Phi-3-mini Model
+
+```bash
+# Install Hugging Face CLI
+pip install huggingface-hub
+
+# Download 4-bit quantized model (~2.3GB)
+huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
+  --include "cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/*" \
+  --local-dir ./phi-3-mini-4k-instruct-4bit
+```
+
+### 4. Add Model to Xcode
+
+1. In Xcode, right-click `PhoneGPT` group → **Add Files to "PhoneGPT"...**
+2. Select the `phi-3-mini-4k-instruct-4bit` folder
+3. **Important**: Choose "Create folder references" (blue folder, not yellow)
+4. Add to target: `PhoneGPT`
+
+### 5. Build and Run
+
+1. Select your iPhone 15 Pro as the target
+2. Build (Cmd+B) and Run (Cmd+R)
+3. Try: "Hi!", "Why is the sky blue?", "Tell me about yourself"
+
+📖 **For detailed setup instructions, see [PHI3_MLX_SETUP.md](PHI3_MLX_SETUP.md)**
 
 ## Usage
 

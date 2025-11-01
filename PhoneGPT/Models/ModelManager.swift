@@ -1,34 +1,38 @@
 import CoreML
 import Foundation
 import SwiftUI
+import MLX
+import MLXLLM
+import Tokenizers
 
 /// ModelManager handles all AI inference and response generation for PhoneGPT
 ///
 /// Architecture:
-/// - Uses CoreML for on-device language model inference when available
+/// - Uses Apple's MLX framework for on-device LLM inference
+/// - Loads Microsoft Phi-3-mini (3.8B param) model with 4-bit quantization
 /// - Maintains conversation history for context-aware responses
 /// - Falls back to intelligent pattern matching if model unavailable
-/// - Provides conversational, ChatGPT-like responses instead of scripted ones
+/// - Provides conversational, ChatGPT-like responses
 ///
 /// Key Features:
-/// - Natural language generation with system prompts for personality
+/// - Natural language generation with Phi-3-mini LLM
+/// - Streaming token generation for real-time feedback
 /// - Context-aware document search and question answering
 /// - Message summarization with intelligent intent detection
 /// - Conversation history tracking for multi-turn dialogue
+/// - Fully on-device, private, no network required
 
 @MainActor
 class ModelManager: ObservableObject {
     static let shared = ModelManager()
-    
+
     @Published var isModelLoaded = false
     @Published var isGenerating = false
     @Published var generationProgress: Float = 0
     @Published var currentOutput = ""
     @Published var tokensPerSecond: Double = 0
-    
-    private var model: MLModel?
-    private var lastGreetingTime: Date?
-    private var lastUserMood: String = "neutral"
+
+    private var modelContainer: ModelContainer?
     private var conversationHistory: [(role: String, content: String)] = []
     private let maxHistoryLength = 10
     
@@ -46,24 +50,28 @@ class ModelManager: ObservableObject {
         Task {
             self.isModelLoaded = false
             do {
-                let config = MLModelConfiguration()
-                config.computeUnits = .all
-                
-                guard let modelURL = Bundle.main.url(
-                    forResource: "PhoneGPT",
-                    withExtension: "mlmodelc"
-                ) else {
-                    print("⚠️ Model not found — using mock mode")
-                    self.isModelLoaded = true
+                print("🔄 Loading Phi-3-mini model with MLX...")
+
+                // Check if model exists in bundle
+                guard let modelPath = Bundle.main.path(forResource: "phi-3-mini-4k-instruct-4bit", ofType: nil) else {
+                    print("⚠️ Phi-3 model not found in bundle - using fallback responses")
+                    print("📥 Please download the model and add to project:")
+                    print("   https://huggingface.co/microsoft/Phi-3-mini-4k-instruct")
+                    self.isModelLoaded = false
                     return
                 }
-                
-                self.model = try MLModel(contentsOf: modelURL, configuration: config)
+
+                // Load model with MLX
+                let modelConfig = ModelRegistry.phi3_5_mini_4bit  // Or phi3_mini_4bit
+                self.modelContainer = try await ModelContainer.shared.load(modelDirectory: URL(fileURLWithPath: modelPath))
+
                 self.isModelLoaded = true
-                print("✅ PhoneGPT model loaded successfully")
+                print("✅ Phi-3-mini loaded successfully with MLX!")
+                print("📊 Model: Microsoft Phi-3-mini (3.8B params, 4-bit quantized)")
             } catch {
-                print("❌ Failed to load model: \(error)")
-                self.isModelLoaded = true
+                print("❌ Failed to load Phi-3 model: \(error)")
+                print("⚠️ Falling back to pattern-based responses")
+                self.isModelLoaded = false
             }
         }
     }
@@ -122,7 +130,7 @@ class ModelManager: ObservableObject {
     private func generateConversationalResponse(for userMessage: String) async -> String {
         // Build conversation context with system prompt
         let systemPrompt = """
-        You are PhoneGPT, a friendly and helpful AI assistant running entirely on the user's iPhone. You're knowledgeable, conversational, and personable - similar to ChatGPT or Claude, but with a focus on privacy since you run completely offline.
+        You are PhoneGPT, a friendly and helpful AI assistant running entirely on the user's iPhone using Microsoft's Phi-3 model. You're knowledgeable, conversational, and personable - similar to ChatGPT or Claude, but with a focus on privacy since you run completely on-device.
 
         Key traits:
         - Be natural and conversational, not robotic or scripted
@@ -130,14 +138,14 @@ class ModelManager: ObservableObject {
         - Be helpful and informative without being overly formal
         - Keep responses concise but complete (2-4 sentences for simple questions)
         - Acknowledge when you don't know something
-        - You run locally on the Neural Engine, so you're fast and private
+        - You run locally on Apple's Neural Engine with MLX, so you're fast and private
         - You can help with questions, conversation, and searching the user's documents
 
         Respond naturally as if you're having a real conversation.
         """
 
-        // Try to use the actual model if available
-        if let modelResponse = await tryModelInference(systemPrompt: systemPrompt, userMessage: userMessage) {
+        // Try to use Phi-3 model with MLX
+        if let modelResponse = await tryMLXInference(systemPrompt: systemPrompt, userMessage: userMessage) {
             return modelResponse
         }
 
@@ -145,72 +153,58 @@ class ModelManager: ObservableObject {
         return generateIntelligentFallback(for: userMessage)
     }
 
-    // MARK: - Try Model Inference
-    private func tryModelInference(systemPrompt: String, userMessage: String) async -> String? {
-        guard let model = model else { return nil }
+    // MARK: - Try MLX Inference
+    private func tryMLXInference(systemPrompt: String, userMessage: String) async -> String? {
+        guard let container = modelContainer else { return nil }
 
         do {
-            // Build full prompt with conversation history
-            var fullPrompt = systemPrompt + "\n\n"
+            // Build Phi-3 formatted prompt with conversation history
+            var fullPrompt = "<|system|>\n\(systemPrompt)<|end|>\n"
 
-            // Add recent conversation history for context
+            // Add recent conversation history
             let recentHistory = conversationHistory.suffix(6)
             for turn in recentHistory {
                 if turn.role == "user" {
-                    fullPrompt += "User: \(turn.content)\n"
+                    fullPrompt += "<|user|>\n\(turn.content)<|end|>\n"
                 } else {
-                    fullPrompt += "Assistant: \(turn.content)\n"
+                    fullPrompt += "<|assistant|>\n\(turn.content)<|end|>\n"
                 }
             }
 
-            fullPrompt += "User: \(userMessage)\nAssistant:"
+            fullPrompt += "<|user|>\n\(userMessage)<|end|>\n<|assistant|>\n"
 
-            // Prepare input for CoreML model
-            let inputDict: [String: Any] = [
-                "text": fullPrompt,
-                "max_tokens": 150
-            ]
+            // Generate with streaming
+            var fullResponse = ""
+            let startTime = Date()
+            var tokenCount = 0
 
-            let inputProvider = try MLDictionaryFeatureProvider(dictionary: inputDict)
-            let prediction = try model.prediction(from: inputProvider)
+            let generateTask = Task {
+                for await text in container.perform { context in
+                    return try await context.generate(prompt: fullPrompt, parameters: .init(maxTokens: 150))
+                } {
+                    fullResponse += text
+                    tokenCount += 1
 
-            // Extract generated text from model output
-            // The exact key depends on your model - common ones are "output", "text", "generated_text"
-            if let output = prediction.featureValue(for: "output")?.stringValue {
-                return cleanModelOutput(output)
-            } else if let output = prediction.featureValue(for: "text")?.stringValue {
-                return cleanModelOutput(output)
-            } else if let output = prediction.featureValue(for: "generated_text")?.stringValue {
-                return cleanModelOutput(output)
+                    // Update UI
+                    await MainActor.run {
+                        self.currentOutput = fullResponse
+                        self.generationProgress = min(Float(tokenCount) / 150.0, 0.95)
+
+                        let elapsed = Date().timeIntervalSince(startTime)
+                        if elapsed > 0 {
+                            self.tokensPerSecond = Double(tokenCount) / elapsed
+                        }
+                    }
+                }
             }
 
-            // If we can't find the output, return nil to use fallback
-            return nil
+            _ = await generateTask.value
+            return fullResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+
         } catch {
-            print("⚠️ Model inference failed: \(error)")
+            print("⚠️ MLX inference failed: \(error)")
             return nil
         }
-    }
-
-    // MARK: - Clean Model Output
-    private func cleanModelOutput(_ rawOutput: String) -> String {
-        var cleaned = rawOutput
-        // Remove any remaining prompt markers
-        if let range = cleaned.range(of: "Assistant:") {
-            cleaned = String(cleaned[range.upperBound...])
-        }
-        // Trim whitespace and newlines
-        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Truncate at natural sentence endings if too long
-        if cleaned.count > 500 {
-            if let lastPeriod = cleaned.lastIndex(of: "."),
-               lastPeriod.utf16Offset(in: cleaned) < 500 {
-                cleaned = String(cleaned[...lastPeriod])
-            } else {
-                cleaned = String(cleaned.prefix(500)) + "..."
-            }
-        }
-        return cleaned
     }
 
     // MARK: - Intelligent Fallback
@@ -321,18 +315,34 @@ class ModelManager: ObservableObject {
 
     // MARK: - Document-Aware Model Inference
     private func tryDocumentAwareInference(documentContent: String, question: String) async -> String? {
-        guard let model = model else { return nil }
+        guard let container = modelContainer else { return nil }
 
-        let systemPrompt = """
-        You are PhoneGPT, a friendly AI assistant. The user has imported some documents, and you should use the provided context to answer their question. Be natural and conversational in your response.
+        do {
+            let systemPrompt = """
+            You are PhoneGPT, a friendly AI assistant. The user has imported some documents, and you should use the provided context to answer their question. Be natural and conversational in your response.
 
-        Context from user's documents:
-        \(documentContent.prefix(1000))
+            Context from user's documents:
+            \(documentContent.prefix(2000))
 
-        Answer the user's question based on this context. If the context doesn't contain relevant information, politely say so and offer to help in another way.
-        """
+            Answer the user's question based on this context. If the context doesn't contain relevant information, politely say so and offer to help in another way.
+            """
 
-        return await tryModelInference(systemPrompt: systemPrompt, userMessage: question)
+            // Build Phi-3 formatted prompt
+            let fullPrompt = "<|system|>\n\(systemPrompt)<|end|>\n<|user|>\n\(question)<|end|>\n<|assistant|>\n"
+
+            // Generate response
+            var fullResponse = ""
+            for await text in container.perform { context in
+                return try await context.generate(prompt: fullPrompt, parameters: .init(maxTokens: 200))
+            } {
+                fullResponse += text
+            }
+
+            return fullResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            print("⚠️ Document-aware MLX inference failed: \(error)")
+            return nil
+        }
     }
 
     // MARK: - Detect General Knowledge Questions
