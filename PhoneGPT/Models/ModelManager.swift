@@ -1,9 +1,12 @@
 import CoreML
 import Foundation
 import SwiftUI
-import MLX
-import MLXLLM
-import Tokenizers
+
+// MLX imports - will be added via Swift Package Manager
+// Uncomment these after adding packages:
+// import MLX
+// import MLXLLM
+// import Tokenizers
 
 /// ModelManager handles all AI inference and response generation for PhoneGPT
 ///
@@ -32,7 +35,8 @@ class ModelManager: ObservableObject {
     @Published var currentOutput = ""
     @Published var tokensPerSecond: Double = 0
 
-    private var modelContainer: ModelContainer?
+    // MLX model container - will be enabled after packages added
+    // private var modelContainer: LLMModelContainer?
     private var conversationHistory: [(role: String, content: String)] = []
     private let maxHistoryLength = 10
     
@@ -49,6 +53,9 @@ class ModelManager: ObservableObject {
     func loadModel() {
         Task {
             self.isModelLoaded = false
+
+            // TODO: Uncomment after adding MLX packages
+            /*
             do {
                 print("🔄 Loading Phi-3-mini model with MLX...")
 
@@ -62,8 +69,11 @@ class ModelManager: ObservableObject {
                 }
 
                 // Load model with MLX
-                let modelConfig = ModelRegistry.phi3_5_mini_4bit  // Or phi3_mini_4bit
-                self.modelContainer = try await ModelContainer.shared.load(modelDirectory: URL(fileURLWithPath: modelPath))
+                let modelURL = URL(fileURLWithPath: modelPath)
+                modelContainer = try await LLMModelContainer.shared.loadModel(
+                    url: modelURL,
+                    configuration: .init(id: "phi3")
+                )
 
                 self.isModelLoaded = true
                 print("✅ Phi-3-mini loaded successfully with MLX!")
@@ -73,6 +83,15 @@ class ModelManager: ObservableObject {
                 print("⚠️ Falling back to pattern-based responses")
                 self.isModelLoaded = false
             }
+            */
+
+            // Temporary: Using fallback until packages added
+            print("⚠️ MLX packages not added yet - using intelligent fallback responses")
+            print("📦 Add Swift packages to enable Phi-3:")
+            print("   1. MLX Swift")
+            print("   2. MLX Swift Examples")
+            print("   3. Swift Transformers")
+            self.isModelLoaded = false
         }
     }
     
@@ -155,6 +174,8 @@ class ModelManager: ObservableObject {
 
     // MARK: - Try MLX Inference
     private func tryMLXInference(systemPrompt: String, userMessage: String) async -> String? {
+        // TODO: Uncomment after adding MLX packages
+        /*
         guard let container = modelContainer else { return nil }
 
         do {
@@ -173,16 +194,19 @@ class ModelManager: ObservableObject {
 
             fullPrompt += "<|user|>\n\(userMessage)<|end|>\n<|assistant|>\n"
 
-            // Generate with streaming
+            // Generate with streaming using MLX
             var fullResponse = ""
             let startTime = Date()
             var tokenCount = 0
 
             let generateTask = Task {
-                for await text in container.perform { context in
-                    return try await context.generate(prompt: fullPrompt, parameters: .init(maxTokens: 150))
-                } {
-                    fullResponse += text
+                let result = try await container.generate(
+                    prompt: fullPrompt,
+                    maxTokens: 150
+                )
+
+                for token in result.tokens {
+                    fullResponse += token
                     tokenCount += 1
 
                     // Update UI
@@ -205,6 +229,10 @@ class ModelManager: ObservableObject {
             print("⚠️ MLX inference failed: \(error)")
             return nil
         }
+        */
+
+        // Temporary: No MLX available yet
+        return nil
     }
 
     // MARK: - Intelligent Fallback
@@ -315,6 +343,8 @@ class ModelManager: ObservableObject {
 
     // MARK: - Document-Aware Model Inference
     private func tryDocumentAwareInference(documentContent: String, question: String) async -> String? {
+        // TODO: Uncomment after adding MLX packages
+        /*
         guard let container = modelContainer else { return nil }
 
         do {
@@ -330,19 +360,21 @@ class ModelManager: ObservableObject {
             // Build Phi-3 formatted prompt
             let fullPrompt = "<|system|>\n\(systemPrompt)<|end|>\n<|user|>\n\(question)<|end|>\n<|assistant|>\n"
 
-            // Generate response
-            var fullResponse = ""
-            for await text in container.perform { context in
-                return try await context.generate(prompt: fullPrompt, parameters: .init(maxTokens: 200))
-            } {
-                fullResponse += text
-            }
+            // Generate response with MLX
+            let result = try await container.generate(
+                prompt: fullPrompt,
+                maxTokens: 200
+            )
 
-            return fullResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+            return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
             print("⚠️ Document-aware MLX inference failed: \(error)")
             return nil
         }
+        */
+
+        // Temporary: No MLX available yet
+        return nil
     }
 
     // MARK: - Detect General Knowledge Questions
