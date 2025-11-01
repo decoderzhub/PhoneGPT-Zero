@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		38C8DFE22EB5C0AD005D4A56 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 38C8DFE12EB5C0AD005D4A56 /* ZIPFoundation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		38C8DFA02EB5891C005D4A56 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38C8DFE22EB5C0AD005D4A56 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = PhoneGPT;
 			packageProductDependencies = (
+				38C8DFE12EB5C0AD005D4A56 /* ZIPFoundation */,
 			);
 			productName = PhoneGPT;
 			productReference = 38C8DF8D2EB5891A005D4A56 /* PhoneGPT.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 38C8DF842EB5891A005D4A56;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				38C8DFE02EB5BFB7005D4A56 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 38C8DF8E2EB5891A005D4A56 /* Products */;
 			projectDirPath = "";
@@ -395,6 +404,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PhoneGPT/PhoneGPT.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XWH35UL2UW;
@@ -423,6 +433,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PhoneGPT/PhoneGPT.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XWH35UL2UW;
@@ -558,6 +569,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		38C8DFE02EB5BFB7005D4A56 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		38C8DFE12EB5C0AD005D4A56 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 38C8DFE02EB5BFB7005D4A56 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 38C8DF852EB5891A005D4A56 /* Project object */;
 }
