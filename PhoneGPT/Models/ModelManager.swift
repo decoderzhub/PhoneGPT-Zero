@@ -2,11 +2,12 @@ import CoreML
 import Foundation
 import SwiftUI
 
-// MLX imports - will be added via Swift Package Manager
-// Uncomment these after adding packages:
-// import MLX
-// import MLXLLM
-// import Tokenizers
+// MLX imports - enabled with ENABLE_MLX flag after adding packages
+#if ENABLE_MLX
+import MLX
+import MLXLLM
+import Tokenizers
+#endif
 
 /// ModelManager handles all AI inference and response generation for PhoneGPT
 ///
@@ -36,7 +37,10 @@ class ModelManager: ObservableObject {
     @Published var tokensPerSecond: Double = 0
 
     // MLX model container - will be enabled after packages added
-    // private var modelContainer: LLMModelContainer?
+    #if ENABLE_MLX
+    private var modelContainer: LLMModelContainer?
+    #endif
+
     private var conversationHistory: [(role: String, content: String)] = []
     private let maxHistoryLength = 10
     
@@ -54,8 +58,7 @@ class ModelManager: ObservableObject {
         Task {
             self.isModelLoaded = false
 
-            // TODO: Uncomment after adding MLX packages
-            /*
+            #if ENABLE_MLX
             do {
                 print("🔄 Loading Phi-3-mini model with MLX...")
 
@@ -83,15 +86,14 @@ class ModelManager: ObservableObject {
                 print("⚠️ Falling back to pattern-based responses")
                 self.isModelLoaded = false
             }
-            */
-
+            #else
             // Temporary: Using fallback until packages added
             print("⚠️ MLX packages not added yet - using intelligent fallback responses")
-            print("📦 Add Swift packages to enable Phi-3:")
-            print("   1. MLX Swift")
-            print("   2. MLX Swift Examples")
-            print("   3. Swift Transformers")
+            print("📦 To enable Phi-3:")
+            print("   1. Add Swift packages (MLX, MLXLLM, Tokenizers)")
+            print("   2. Add -DENABLE_MLX to Other Swift Flags in build settings")
             self.isModelLoaded = false
+            #endif
         }
     }
     
@@ -174,8 +176,7 @@ class ModelManager: ObservableObject {
 
     // MARK: - Try MLX Inference
     private func tryMLXInference(systemPrompt: String, userMessage: String) async -> String? {
-        // TODO: Uncomment after adding MLX packages
-        /*
+        #if ENABLE_MLX
         guard let container = modelContainer else { return nil }
 
         do {
@@ -229,10 +230,10 @@ class ModelManager: ObservableObject {
             print("⚠️ MLX inference failed: \(error)")
             return nil
         }
-        */
-
-        // Temporary: No MLX available yet
+        #else
+        // No MLX available yet
         return nil
+        #endif
     }
 
     // MARK: - Intelligent Fallback
@@ -343,8 +344,7 @@ class ModelManager: ObservableObject {
 
     // MARK: - Document-Aware Model Inference
     private func tryDocumentAwareInference(documentContent: String, question: String) async -> String? {
-        // TODO: Uncomment after adding MLX packages
-        /*
+        #if ENABLE_MLX
         guard let container = modelContainer else { return nil }
 
         do {
@@ -371,10 +371,10 @@ class ModelManager: ObservableObject {
             print("⚠️ Document-aware MLX inference failed: \(error)")
             return nil
         }
-        */
-
-        // Temporary: No MLX available yet
+        #else
+        // No MLX available yet
         return nil
+        #endif
     }
 
     // MARK: - Detect General Knowledge Questions
