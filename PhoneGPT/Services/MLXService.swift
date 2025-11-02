@@ -59,27 +59,6 @@ class MLXService {
     /// Cache for loaded models (prevents reloading)
     private let modelCache = NSCache<NSString, ModelContainer>()
 
-    /// Download progress for currently loading model
-    private(set) var modelDownloadProgress: Progress?
-
-    /// Performance info from last generation
-    private(set) var lastGenerationInfo: GenerateCompletionInfo?
-
-    /// Current error state
-    private(set) var lastError: Error?
-
-    // MARK: - Computed Properties
-
-    /// Tokens per second from last generation
-    var tokensPerSecond: Double {
-        lastGenerationInfo?.tokensPerSecond ?? 0
-    }
-
-    /// Whether model is currently downloading
-    var isDownloading: Bool {
-        modelDownloadProgress != nil
-    }
-
     // MARK: - Model Loading
 
     /// Load a model from cache or Hugging Face Hub
@@ -101,18 +80,14 @@ class MLXService {
         let factory = LLMModelFactory.shared
 
         let container = try await factory.loadContainer(
-            hub: HubApi.default,  // Use our extension
+            hub: HubApi.default,
             configuration: model.configuration
         ) { progress in
-            Task { @MainActor in
-                self.modelDownloadProgress = progress
-                let percent = Int(progress.fractionCompleted * 100)
-                print("📊 Download: \(percent)%")
-            }
+            let percent = Int(progress.fractionCompleted * 100)
+            print("📊 Download: \(percent)%")
         }
 
         modelCache.setObject(container, forKey: model.name as NSString)
-        modelDownloadProgress = nil
 
         print("✅ Loaded \(model.name)")
         return container

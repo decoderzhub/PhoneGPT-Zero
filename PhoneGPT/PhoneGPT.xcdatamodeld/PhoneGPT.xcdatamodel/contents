@@ -1,9 +1,39 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="false" userDefinedModelVersionIdentifier="">
-    <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">
-        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    <entity name="ChatSession" representedClassName="ChatSession" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="messages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ChatMessage" inverseName="session" inverseEntity="ChatMessage"/>
+        <relationship name="documents" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ImportedDocument" inverseName="session" inverseEntity="ImportedDocument"/>
+    </entity>
+    <entity name="ChatMessage" representedClassName="ChatMessage" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="content" attributeType="String"/>
+        <attribute name="role" attributeType="String"/>
+        <attribute name="timestamp" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ChatSession" inverseName="messages" inverseEntity="ChatSession"/>
+    </entity>
+    <entity name="ImportedDocument" representedClassName="ImportedDocument" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="fileName" attributeType="String"/>
+        <attribute name="content" attributeType="String"/>
+        <attribute name="importedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ChatSession" inverseName="documents" inverseEntity="ChatSession"/>
+        <relationship name="embeddings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DocumentEmbedding" inverseName="document" inverseEntity="DocumentEmbedding"/>
+    </entity>
+    <entity name="DocumentEmbedding" representedClassName="DocumentEmbedding" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="chunkText" attributeType="String"/>
+        <attribute name="embedding" attributeType="Transformable" customClassName="[Float]"/>
+        <attribute name="chunkIndex" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="document" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ImportedDocument" inverseName="embeddings" inverseEntity="ImportedDocument"/>
     </entity>
     <elements>
-        <element name="Item" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="ChatSession" positionX="-63" positionY="-18" width="128" height="119"/>
+        <element name="ChatMessage" positionX="-54" positionY="0" width="128" height="104"/>
+        <element name="ImportedDocument" positionX="-36" positionY="18" width="128" height="119"/>
+        <element name="DocumentEmbedding" positionX="-18" positionY="27" width="128" height="104"/>
     </elements>
 </model>
