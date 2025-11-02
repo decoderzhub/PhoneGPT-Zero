@@ -13,6 +13,9 @@ class PersonalDataManager: NSObject, ObservableObject {
     // Use sentence embeddings for better semantic understanding
     private let embedder = NLEmbedding.sentenceEmbedding(for: .english)
     private let embeddingDimension = 768 // Apple's sentence embedding dimension
+
+    // Grammar Arithmetic Layer for fluent summaries
+    private let grammarRefiner = GrammarRefiner()
     
     struct DocumentEmbedding {
         let content: String
@@ -511,7 +514,15 @@ class PersonalDataManager: NSObject, ObservableObject {
             summary += "• \(item.sentence).\n"
         }
 
-        return summary.isEmpty ? "I couldn't find specific information matching your query." : summary
+        let rawSummary = summary.isEmpty ? "I couldn't find specific information matching your query." : summary
+
+        // Apply grammar arithmetic for fluent output
+        let refinedSummary = grammarRefiner.refineForContext(rawSummary, query: query)
+
+        print("📝 Summary refined for query: \"\(query.prefix(40))...\"")
+        print("   Fluency score: \(grammarRefiner.fluencyScore(refinedSummary))")
+
+        return refinedSummary
     }
 }
 

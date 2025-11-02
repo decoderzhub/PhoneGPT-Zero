@@ -5,16 +5,19 @@ import SwiftUI
 @MainActor
 class ModelManager: ObservableObject {
     static let shared = ModelManager()
-    
+
     @Published var isModelLoaded = false
     @Published var isGenerating = false
     @Published var generationProgress: Float = 0
     @Published var currentOutput = ""
     @Published var tokensPerSecond: Double = 0
-    
+
     private var model: MLModel?
     private var lastGreetingTime: Date?
     private var lastUserMood: String = "neutral"
+
+    // Grammar Arithmetic Layer for fluent responses
+    private let grammarRefiner = GrammarRefiner()
     
     init() {
         loadModel()
@@ -52,19 +55,27 @@ class ModelManager: ObservableObject {
         self.isGenerating = true
         self.generationProgress = 0
         self.currentOutput = ""
-        
-        let response: String
-        
+
+        let rawResponse: String
+
         if prompt.contains("Context from documents:") {
             let parts = prompt.components(separatedBy: "Question:")
             let contextPart = parts.first ?? ""
             let question = parts.last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? prompt
             let contextContent = extractContext(from: contextPart)
-            response = generateFromDocumentContext(documentContent: contextContent, question: question)
+            rawResponse = generateFromDocumentContext(documentContent: contextContent, question: question)
         } else {
-            response = generateSimpleResponse(for: prompt)
+            rawResponse = generateSimpleResponse(for: prompt)
         }
-        
+
+        // Apply Grammar Arithmetic refinement for fluency
+        let response = grammarRefiner.refine(rawResponse)
+
+        print("📝 Grammar refinement:")
+        print("   Before: \(rawResponse.prefix(80))...")
+        print("   After:  \(response.prefix(80))...")
+        print("   Fluency score: \(grammarRefiner.fluencyScore(response))")
+
         // Animate generation visually
         for i in 0..<response.count {
             let index = response.index(response.startIndex, offsetBy: i)
@@ -74,7 +85,7 @@ class ModelManager: ObservableObject {
             self.tokensPerSecond = 18.0
             try? await Task.sleep(nanoseconds: 12_000_000)
         }
-        
+
         self.isGenerating = false
         self.generationProgress = 1.0
         return response
