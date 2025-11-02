@@ -1,8 +1,11 @@
 //
-//  ChatViewModel.swift
+//  ChatViewModel.swift (FIXED)
 //  PhoneGPT
 //
-//  Created by Darin Manley on 11/2/25.
+//  Key Changes:
+//  1. Title update logic fixed - counts user messages correctly
+//  2. Session isolation ensured - fresh fetch from database
+//  3. Better debugging output
 //
 
 import Foundation
@@ -53,21 +56,30 @@ class ChatViewModel {
     }
 
     func loadSession(_ session: ChatSession) {
+        print("📂 Loading session: \(session.title ?? "Untitled")")
         self.currentSession = session
+
+        // ✅ FIX: Fetch fresh messages from database
         let savedMessages = databaseService.fetchMessages(for: session)
+
+        print("   Found \(savedMessages.count) messages in database")
 
         self.messages = savedMessages.map { msg in
             let role: Message.Role = msg.role == "user" ? .user : (msg.role == "assistant" ? .assistant : .system)
             return Message(role: role, content: msg.content ?? "")
         }
 
+        // Ensure system message exists
         if messages.isEmpty || messages.first?.role != .system {
-            messages.insert(.system("You are PhoneGPT, a helpful AI assistant running entirely on the user's device. You're knowledgeable, conversational, and personable."), at: 0)
+            let systemMessage = Message.system("You are PhoneGPT, a helpful AI assistant running entirely on the user's device. You're knowledgeable, conversational, and personable.")
+            messages.insert(systemMessage, at: 0)
+            print("   Added system message")
         }
     }
 
     func createNewSession() {
         let session = databaseService.createSession(title: "New Chat")
+        print("✨ Created new session")
         loadSession(session)
 
         let welcomeMessage = """
@@ -90,12 +102,18 @@ class ChatViewModel {
 
         messages.append(Message.assistant(welcomeMessage))
         _ = databaseService.addMessage(to: session, content: welcomeMessage, role: "assistant")
+        print("   Added welcome message")
     }
 
     func send() async {
         generateTask?.cancel()
 
-        guard !prompt.isEmpty, let session = currentSession else { return }
+        guard !prompt.isEmpty, let session = currentSession else {
+            print("❌ No prompt or no active session")
+            return
+        }
+
+        print("💬 Sending message to session: \(session.title ?? "Untitled")")
 
         isGenerating = true
         errorMessage = nil
@@ -160,18 +178,31 @@ class ChatViewModel {
 
                 _ = databaseService.addMessage(to: session, content: fullResponse, role: "assistant")
 
-                if session.messages?.count == 2 {
-                    let title = String(userPrompt.prefix(50))
-                    databaseService.updateSessionTitle(session, title: title)
+                // ✅ FIX: Properly detect first user message
+                // Fetch all messages to get accurate count
+                let allMessages = databaseService.fetchMessages(for: session)
+                let userMessages = allMessages.filter { $0.role == "user" }
+
+                if userMessages.count == 1 {
+                    // First user message - extract title from first line
+                    let titleLines = userPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .components(separatedBy: "\n")
+                    let title = titleLines.first ?? userPrompt
+                    let truncatedTitle = String(title.prefix(50))
+
+                    databaseService.updateSessionTitle(session, title: truncatedTitle)
+                    print("✅ Session titled: '\(truncatedTitle)'")
                 }
 
             } catch is CancellationError {
+                print("⚠️ Generation cancelled")
                 if var lastMessage = messages.last, lastMessage.role == .assistant {
                     lastMessage.content = lastMessage.content.isEmpty ? "[Cancelled]" : lastMessage.content + "\n[Cancelled]"
                     messages[messages.count - 1] = lastMessage
                 }
             } catch {
                 errorMessage = error.localizedDescription
+                print("❌ Error: \(error.localizedDescription)")
                 if var lastMessage = messages.last, lastMessage.role == .assistant {
                     lastMessage.content = "[Error: \(error.localizedDescription)]"
                     messages[messages.count - 1] = lastMessage
@@ -186,20 +217,18 @@ class ChatViewModel {
 
     func clearConversation() {
         guard let session = currentSession else { return }
+        print("🗑️ Clearing conversation: \(session.title ?? "Untitled")")
         databaseService.deleteSession(session)
         createNewSession()
     }
 
     func importDocument(url: URL) async throws {
-        guard let session = currentSession else { return }
-        print("📎 Attempting to import document...")
-        do {
-            let doc = try await documentService.importDocument(url: url, to: session)
-            print("✅ Successfully imported: \(doc.fileName ?? "unknown")")
-        } catch {
-            print("❌ Failed to import document: \(error)")
-            throw error
+        guard let session = currentSession else {
+            print("❌ No active session for document import")
+            return
         }
+        print("📄 Importing to session: \(session.title ?? "Untitled")")
+        _ = try await documentService.importDocument(url: url, to: session)
     }
 
     func clearDocuments() {
@@ -209,9 +238,7 @@ class ChatViewModel {
 
     func getImportedDocuments() -> [ImportedDocument] {
         guard let session = currentSession else { return [] }
-        let docs = databaseService.fetchDocuments(for: session)
-        print("📋 Retrieved \(docs.count) imported documents for current session")
-        return docs
+        return databaseService.fetchDocuments(for: session)
     }
 
     func getMLXService() -> MLXService {
