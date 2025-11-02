@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Supabase
 
 struct ChatSession: Identifiable, Codable {
@@ -19,7 +20,7 @@ struct ChatSession: Identifiable, Codable {
     }
 }
 
-struct ChatMessage: Identifiable, Codable {
+struct StoredChatMessage: Identifiable, Codable {
     let id: UUID
     let sessionId: UUID
     let role: MessageRole
@@ -55,7 +56,7 @@ struct ChatMessage: Identifiable, Codable {
 class ChatSessionManager: ObservableObject {
     @Published var sessions: [ChatSession] = []
     @Published var currentSession: ChatSession?
-    @Published var currentMessages: [ChatMessage] = []
+    @Published var currentMessages: [StoredChatMessage] = []
     @Published var isLoading = false
 
     private let supabase: SupabaseClient
@@ -144,7 +145,7 @@ class ChatSessionManager: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response: [ChatMessage] = try await supabase
+            let response: [StoredChatMessage] = try await supabase
                 .from("chat_messages")
                 .select()
                 .eq("session_id", value: sessionId.uuidString)
@@ -161,7 +162,7 @@ class ChatSessionManager: ObservableObject {
         }
     }
 
-    func addMessage(role: ChatMessage.MessageRole, content: String, metadata: [String: String] = [:]) async {
+    func addMessage(role: StoredChatMessage.MessageRole, content: String, metadata: [String: String] = [:]) async {
         guard let session = currentSession else {
             print("⚠️ No current session - creating new one")
             await createNewSession()
@@ -171,14 +172,14 @@ class ChatSessionManager: ObservableObject {
         }
 
         do {
-            let message = ChatMessage(
+            let message = StoredChatMessage(
                 sessionId: session.id,
                 role: role,
                 content: content,
                 metadata: metadata
             )
 
-            let response: ChatMessage = try await supabase
+            let response: StoredChatMessage = try await supabase
                 .from("chat_messages")
                 .insert(message)
                 .select()

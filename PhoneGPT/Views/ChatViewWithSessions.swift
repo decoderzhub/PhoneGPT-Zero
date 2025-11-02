@@ -392,7 +392,7 @@ struct EmptyStateView: View {
 }
 
 struct MessageBubbleView: View {
-    let message: ChatMessage
+    let message: StoredChatMessage
 
     var body: some View {
         HStack {
