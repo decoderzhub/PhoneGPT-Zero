@@ -5,10 +5,10 @@ import CoreData
 struct PhoneGPTApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject private var modelManager = ModelManager.shared
-    
+
     var body: some Scene {
         WindowGroup {
-            ChatView()
+            ChatViewWithSessions()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environmentObject(modelManager)
                 .preferredColorScheme(.dark)

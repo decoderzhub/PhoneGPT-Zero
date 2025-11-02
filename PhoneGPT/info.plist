@@ -6,5 +6,9 @@
 	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<key>VITE_SUPABASE_URL</key>
+	<string>https://xbhlxoctzwcgzgkixnls.supabase.co</string>
+	<key>VITE_SUPABASE_SUPABASE_ANON_KEY</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiaGx4b2N0endjZ3pna2l4bmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNDk0NzYsImV4cCI6MjA3NzYyNTQ3Nn0.6z6EvASX0QxTCToeUU1hKKvHq7E4a89Q1DmOowcVaZA</string>
 </dict>
 </plist>

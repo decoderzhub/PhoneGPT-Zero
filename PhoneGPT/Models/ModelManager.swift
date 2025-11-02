@@ -55,12 +55,13 @@ class ModelManager: ObservableObject {
     
     // MARK: - RAG Pipeline (Complete Implementation)
 
-    /// Full RAG (Retrieval-Augmented Generation) pipeline
+    /// Full RAG (Retrieval-Augmented Generation) pipeline with conversation history
     /// 1. Retrieve relevant documents using semantic search
     /// 2. Fuse context from top documents
-    /// 3. Generate response from context
-    /// 4. Refine with grammar arithmetic
-    func generateRAGResponse(for query: String) async -> String {
+    /// 3. Add conversation history for context awareness
+    /// 4. Generate response from context + history
+    /// 5. Refine with grammar arithmetic
+    func generateRAGResponse(for query: String, conversationHistory: String = "") async -> String {
         guard let dataManager = dataManager else {
             print("⚠️ DataManager not available, falling back to simple response")
             return await generate(prompt: query)
@@ -92,9 +93,9 @@ class ModelManager: ObservableObject {
 
         print("   ✅ Context fused (\(Int(fusionTime * 1000))ms, \(fusedContext.count) chars)")
 
-        // Step 3: Generate response from context
+        // Step 3: Generate response from context + conversation history
         let startGeneration = Date()
-        let draft = generateFromContext(fusedContext, query: query)
+        let draft = generateFromContext(fusedContext, query: query, conversationHistory: conversationHistory)
         let generationTime = Date().timeIntervalSince(startGeneration)
 
         print("   ✅ Response generated (\(Int(generationTime * 1000))ms)")
@@ -125,9 +126,14 @@ class ModelManager: ObservableObject {
         return refined
     }
 
-    /// Generates a natural response from fused context
-    private func generateFromContext(_ context: String, query: String) -> String {
+    /// Generates a natural response from fused context with conversation awareness
+    private func generateFromContext(_ context: String, query: String, conversationHistory: String) -> String {
         let lowerQuery = query.lowercased()
+
+        // Check for context-dependent queries (pronouns, references)
+        let hasPronouns = ["it", "they", "them", "this", "that", "these", "those"].contains { lowerQuery.contains($0) }
+        let hasReferences = ["also", "too", "additionally", "furthermore"].contains { lowerQuery.contains($0) }
+        let needsHistory = hasPronouns || hasReferences
 
         // Question type detection
         let isWhatQuestion = lowerQuery.contains("what")
@@ -144,8 +150,19 @@ class ModelManager: ObservableObject {
 
         var response = ""
 
+        // If query needs conversation history, incorporate it
+        if needsHistory && !conversationHistory.isEmpty {
+            let historyLines = conversationHistory.split(separator: "\n").suffix(4)
+            let recentContext = historyLines.joined(separator: " ")
+
+            if lowerQuery.contains("it") || lowerQuery.contains("that") {
+                response = "Based on our previous discussion and your documents: " + (sentences.first ?? context)
+            } else {
+                response = sentences.joined(separator: ". ")
+            }
+        }
         // Answer format based on question type
-        if isWhatQuestion {
+        else if isWhatQuestion {
             response = sentences.first ?? context
         } else if isHowQuestion {
             response = "Based on your documents: " + sentences.joined(separator: ". ")
