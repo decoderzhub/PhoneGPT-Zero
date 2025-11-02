@@ -24,6 +24,7 @@ struct ChatView: View {
     @State private var downloadingModelName: String = ""
     @State private var hasModel = false
     @State private var showScrollToBottom = false
+    @State private var importedDocuments: [ImportedDocument] = []
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -99,6 +100,7 @@ struct ChatView: View {
                         for url in urls {
                             try? await viewModel.importDocument(url: url)
                         }
+                        loadDocuments()
                     }
                 }
             }
@@ -109,6 +111,10 @@ struct ChatView: View {
                     loadSessions()
                 }
                 startMonitoringDownloads()
+                loadDocuments()
+            }
+            .onChange(of: viewModel.currentSession) { _, _ in
+                loadDocuments()
             }
         }
     }
@@ -207,6 +213,39 @@ struct ChatView: View {
 
             Divider()
 
+            if !importedDocuments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(importedDocuments, id: \.id) { document in
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+
+                                Text(document.fileName ?? "Document")
+                                    .font(.caption)
+                                    .lineLimit(1)
+
+                                Button(action: {
+                                    deleteDocument(document)
+                                }) {
+                                    Image(systemName: "trash.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+                .background(Color(UIColor.systemBackground))
+            }
+
             if showingDownloadAlert {
                 VStack(spacing: 8) {
                     HStack {
@@ -265,6 +304,19 @@ struct ChatView: View {
 
     private func loadSessions() {
         sessions = databaseService.fetchAllSessions()
+    }
+
+    private func loadDocuments() {
+        guard let session = viewModel.currentSession else {
+            importedDocuments = []
+            return
+        }
+        importedDocuments = databaseService.fetchDocuments(for: session)
+    }
+
+    private func deleteDocument(_ document: ImportedDocument) {
+        databaseService.deleteDocument(document)
+        loadDocuments()
     }
 
     private func startMonitoringDownloads() {

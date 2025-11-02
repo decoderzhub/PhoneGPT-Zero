@@ -9,22 +9,33 @@ struct MessageBubble: View {
                 Spacer()
             }
 
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 0) {
-                Text(renderMarkdown(message.content))
-                    .padding()
-            }
-            .background(
-                message.role == .user
-                    ? Color.blue
-                    : Color(UIColor.secondarySystemBackground)
-            )
-            .foregroundColor(message.role == .user ? .white : .primary)
-            .cornerRadius(16)
-            .contextMenu {
-                Button(action: {
-                    UIPasteboard.general.string = message.content
-                }) {
-                    Label("Copy", systemImage: "doc.on.doc")
+            if message.role == .assistant && message.content.starts(with: "Welcome to **PhoneGPT**") {
+                WelcomeMessageView()
+                    .contextMenu {
+                        Button(action: {
+                            UIPasteboard.general.string = message.content
+                        }) {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
+                    }
+            } else {
+                VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 0) {
+                    Text(renderMarkdown(message.content))
+                        .padding()
+                }
+                .background(
+                    message.role == .user
+                        ? Color.blue
+                        : Color(UIColor.secondarySystemBackground)
+                )
+                .foregroundColor(message.role == .user ? .white : .primary)
+                .cornerRadius(16)
+                .contextMenu {
+                    Button(action: {
+                        UIPasteboard.general.string = message.content
+                    }) {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
                 }
             }
 
