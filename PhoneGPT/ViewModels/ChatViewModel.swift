@@ -30,15 +30,26 @@ class ChatViewModel {
         generateCompletionInfo?.tokensPerSecond ?? 0
     }
 
-    init(
-        mlxService: MLXService = MLXService(),
-        databaseService: DatabaseService = DatabaseService(),
-        settings: AppSettings = AppSettings()
+    nonisolated init(
+        mlxService: MLXService,
+        databaseService: DatabaseService,
+        documentService: DocumentService,
+        settings: AppSettings
     ) {
         self.mlxService = mlxService
         self.databaseService = databaseService
-        self.documentService = DocumentService(databaseService: databaseService)
+        self.documentService = documentService
         self.settings = settings
+    }
+
+    convenience init(settings: AppSettings) {
+        let databaseService = DatabaseService()
+        self.init(
+            mlxService: MLXService(),
+            databaseService: databaseService,
+            documentService: DocumentService(databaseService: databaseService),
+            settings: settings
+        )
     }
 
     func loadSession(_ session: ChatSession) {
@@ -47,7 +58,7 @@ class ChatViewModel {
 
         self.messages = savedMessages.map { msg in
             let role: Message.Role = msg.role == "user" ? .user : (msg.role == "assistant" ? .assistant : .system)
-            return Message(role: role, content: msg.content ?? "", images: [])
+            return Message(role: role, content: msg.content ?? "")
         }
 
         if messages.isEmpty || messages.first?.role != .system {

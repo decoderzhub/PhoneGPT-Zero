@@ -15,7 +15,7 @@ class DatabaseService: ObservableObject {
         persistenceController.container.viewContext
     }
 
-    init(persistenceController: PersistenceController = .shared) {
+    nonisolated init(persistenceController: PersistenceController = .shared) {
         self.persistenceController = persistenceController
     }
 

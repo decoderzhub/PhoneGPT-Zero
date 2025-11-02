@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 class DocumentService: ObservableObject {
     private let databaseService: DatabaseService
 
-    init(databaseService: DatabaseService) {
+    nonisolated init(databaseService: DatabaseService) {
         self.databaseService = databaseService
     }
 
