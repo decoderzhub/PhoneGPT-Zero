@@ -11,7 +11,12 @@ class PersonalDataManager: NSObject, ObservableObject {
     @Published var isIndexing = false
     
     private var vectorDB: [DocumentEmbedding] = []
-    private let embedder = NLEmbedding.wordEmbedding(for: .english)
+    // Use sentence embeddings for better semantic understanding
+    private let embedder = NLEmbedding.sentenceEmbedding(for: .english)
+    private let embeddingDimension = 768 // Apple's sentence embedding dimension
+
+    // Grammar Arithmetic Layer for fluent summaries
+    private let grammarRefiner = GrammarRefiner()
     
     struct DocumentEmbedding {
         let content: String
@@ -19,9 +24,24 @@ class PersonalDataManager: NSObject, ObservableObject {
         let embedding: [Float]
         let metadata: [String: Any] = [:]
     }
+
+    // Type alias for better semantic naming
+    typealias VectorDocument = DocumentEmbedding
     
     override init() {
         super.init()
+
+        // Verify semantic embedding availability
+        if embedder != nil {
+            print("✅ Semantic embeddings initialized (NLEmbedding)")
+            // Test embedding to get actual dimension
+            if let testVec = embedder?.vector(for: "test") {
+                print("   📊 Embedding dimension: \(testVec.count)")
+            }
+        } else {
+            print("⚠️ Semantic embeddings unavailable - using hash-based fallback")
+        }
+
         // REMOVED auto-loading - starts with empty database
         // loadDefaultDocuments() // <-- COMMENTED OUT
     }
@@ -98,109 +118,102 @@ class PersonalDataManager: NSObject, ObservableObject {
         return fullText.isEmpty ? nil : fullText
     }
     
-    // MARK: - DOCX Text Extraction with ZIPFoundation
-    
+    // MARK: - DOCX Text Extraction
+
     private func extractTextFromDOCX(at url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url) else {
+            print("❌ Could not read DOCX file")
+            return nil
+        }
+
+        // Try NSAttributedString first (works for some DOCX files)
+        if let attributedString = try? NSAttributedString(
+            data: data,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        ) {
+            let text = attributedString.string
+            if !text.isEmpty && !text.contains("�") {
+                print("✅ Extracted text using NSAttributedString")
+                return text
+            }
+        }
+
+        // Fallback: Manual ZIP extraction
+        return extractTextFromDOCXManually(data: data)
+    }
+
+    private func extractTextFromDOCXManually(data: Data) -> String? {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("zip")
+
+        let unzipDestination = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+
         do {
-            // Try to open as archive (DOCX is a ZIP file)
-            guard let archive = Archive(url: url, accessMode: .read) else {
-                print("❌ Could not open DOCX as archive")
-                return extractTextFromDOCXFallback(at: url)
-            }
-            
-            var extractedText = ""
-            
-            // Look for word/document.xml
-            for entry in archive {
-                if entry.path == "word/document.xml" || entry.path.contains("word/document.xml") {
-                    var xmlData = Data()
-                    _ = try archive.extract(entry) { data in
-                        xmlData.append(data)
-                    }
-                    
-                    // Parse XML to extract text
-                    if let xmlString = String(data: xmlData, encoding: .utf8) {
-                        extractedText = parseWordXML(xmlString)
-                    }
-                    break
+            try data.write(to: tempURL)
+
+            try FileManager.default.createDirectory(at: unzipDestination, withIntermediateDirectories: true)
+
+            try FileManager.default.unzipItem(at: tempURL, to: unzipDestination)
+
+            let documentXMLPath = unzipDestination.appendingPathComponent("word/document.xml")
+
+            if let xmlString = try? String(contentsOf: documentXMLPath, encoding: .utf8) {
+                let extractedText = parseTextFromDocumentXML(xmlString)
+
+                try? FileManager.default.removeItem(at: tempURL)
+                try? FileManager.default.removeItem(at: unzipDestination)
+
+                if !extractedText.isEmpty {
+                    print("✅ Extracted text from DOCX using ZIPFoundation")
+                    return extractedText
                 }
             }
-            
-            if !extractedText.isEmpty {
-                print("✅ Extracted \(extractedText.count) characters from DOCX")
-                return extractedText
-            }
-            
-            // Fallback if no text found
-            return extractTextFromDOCXFallback(at: url)
-            
+
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: unzipDestination)
+
         } catch {
-            print("❌ Error reading DOCX: \(error)")
-            return extractTextFromDOCXFallback(at: url)
+            print("❌ Error extracting DOCX: \(error)")
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: unzipDestination)
         }
-    }
-    
-    // Parse Word XML to extract text
-    private func parseWordXML(_ xml: String) -> String {
-        var text = ""
-        
-        // Extract text from <w:t> tags (Word text elements)
-        let pattern = "<w:t[^>]*>([^<]+)</w:t>"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-            let matches = regex.matches(in: xml, range: NSRange(xml.startIndex..., in: xml))
-            
-            for match in matches {
-                if let range = Range(match.range(at: 1), in: xml) {
-                    text += String(xml[range]) + " "
-                }
-            }
-        }
-        
-        // Clean up XML entities
-        text = text.replacingOccurrences(of: "&amp;", with: "&")
-        text = text.replacingOccurrences(of: "&lt;", with: "<")
-        text = text.replacingOccurrences(of: "&gt;", with: ">")
-        text = text.replacingOccurrences(of: "&quot;", with: "\"")
-        text = text.replacingOccurrences(of: "&#39;", with: "'")
-        text = text.replacingOccurrences(of: "&apos;", with: "'")
-        
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
-    // Fallback DOCX extraction
-    private func extractTextFromDOCXFallback(at url: URL) -> String? {
-        // Try to read any readable text from the file
-        if let data = try? Data(contentsOf: url) {
-            var extractedText = ""
-            let bytes = [UInt8](data)
-            var currentWord = ""
-            
-            for byte in bytes {
-                if (byte >= 32 && byte <= 126) || byte == 10 || byte == 13 {
-                    if let char = String(bytes: [byte], encoding: .ascii) {
-                        currentWord += char
-                    }
-                } else {
-                    if currentWord.count > 3 && !currentWord.contains("xml") && !currentWord.contains("\\") {
-                        extractedText += currentWord + " "
-                    }
-                    currentWord = ""
-                }
-            }
-            
-            // Clean up
-            let cleanedText = extractedText
-                .components(separatedBy: .whitespacesAndNewlines)
-                .filter { $0.count > 2 }
-                .joined(separator: " ")
-            
-            if !cleanedText.isEmpty {
-                print("⚠️ Used fallback extraction: \(cleanedText.prefix(100))...")
-                return cleanedText
-            }
-        }
-        
+
         return nil
+    }
+
+    private func parseTextFromDocumentXML(_ xml: String) -> String {
+        // Extract text from <w:t> tags
+        var text = ""
+        var insideTextTag = false
+        var currentText = ""
+
+        let scanner = Scanner(string: xml)
+
+        while !scanner.isAtEnd {
+            if scanner.scanUpToString("<w:t") != nil {
+                if scanner.scanString("<w:t") != nil {
+                    // Skip attributes
+                    _ = scanner.scanUpToString(">")
+                    _ = scanner.scanString(">")
+
+                    // Get text content
+                    if let content = scanner.scanUpToString("</w:t>") {
+                        text += content
+                    }
+                    _ = scanner.scanString("</w:t>")
+                }
+            }
+        }
+
+        // Clean up the text
+        let cleanedText = text
+            .replacingOccurrences(of: "\n+", with: "\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return cleanedText
     }
     
     // MARK: - Process Any Document Type
@@ -233,7 +246,7 @@ class PersonalDataManager: NSObject, ObservableObject {
                ) {
                 return attributedString.string
             }
-            return extractTextFromDOCXFallback(at: url)
+            return nil
             
         case "rtf", "rtfd":
             // Rich text
@@ -385,10 +398,27 @@ class PersonalDataManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Semantic Embeddings with NLEmbedding
+
     private func createEmbedding(for text: String) -> [Float] {
+        // Try to use Apple's semantic sentence embeddings
+        if let semanticEmbedder = embedder,
+           let vector = semanticEmbedder.vector(for: text) {
+            // NLEmbedding returns normalized vectors already
+            print("🧠 Using semantic embedding (dim: \(vector.count))")
+            return vector.map { Float($0) }
+        }
+
+        // Fallback to hash-based embeddings if NLEmbedding unavailable
+        print("⚠️ Falling back to hash-based embedding")
+        return createHashBasedEmbedding(for: text)
+    }
+
+    // Legacy hash-based embedding (fallback)
+    private func createHashBasedEmbedding(for text: String) -> [Float] {
         var embedding = Array(repeating: Float(0), count: 128)
         let words = text.lowercased().components(separatedBy: .whitespacesAndNewlines)
-        
+
         for word in words {
             let hash = word.hashValue
             for i in 0..<128 {
@@ -396,12 +426,12 @@ class PersonalDataManager: NSObject, ObservableObject {
                 embedding[i] += Float(shifted & 1) * 2 - 1
             }
         }
-        
+
         let norm = sqrt(embedding.reduce(0) { $0 + $1 * $1 })
         if norm > 0 {
             embedding = embedding.map { $0 / norm }
         }
-        
+
         return embedding
     }
     
@@ -419,24 +449,38 @@ class PersonalDataManager: NSObject, ObservableObject {
         return chunks
     }
     
-    // MARK: - Search
-    
+    // MARK: - Semantic Search
+
     func search(query: String, topK: Int = 3) -> [DocumentEmbedding] {
         guard !vectorDB.isEmpty else { return [] }
-        
+
         let queryEmbedding = createEmbedding(for: query)
-        
+
+        print("🔍 Searching \(vectorDB.count) documents with semantic similarity")
+        print("   Query: \"\(query.prefix(50))...\"")
+        print("   Embedding dim: \(queryEmbedding.count)")
+
         let scores = vectorDB.map { doc in
             (doc, cosineSimilarity(queryEmbedding, doc.embedding))
         }
-        
-        return scores.sorted { $0.1 > $1.1 }
+
+        let topResults = scores.sorted { $0.1 > $1.1 }
             .prefix(topK)
-            .map { $0.0 }
+
+        // Log top matches for debugging
+        for (idx, result) in topResults.enumerated() {
+            let preview = result.0.content.prefix(60)
+            print("   [\(idx+1)] Score: \(String(format: "%.3f", result.1)) - \"\(preview)...\"")
+        }
+
+        return topResults.map { $0.0 }
     }
     
     private func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Float {
-        guard a.count == b.count else { return 0 }
+        guard a.count == b.count else {
+            print("⚠️ Embedding dimension mismatch: \(a.count) vs \(b.count)")
+            return 0
+        }
         
         var dotProduct: Float = 0
         var normA: Float = 0
@@ -454,17 +498,184 @@ class PersonalDataManager: NSObject, ObservableObject {
     
     func buildContext(for query: String) -> String {
         let relevantDocs = search(query: query, topK: 3)
-        
+
         guard !relevantDocs.isEmpty else {
             return ""
         }
-        
+
         var context = ""
         for doc in relevantDocs {
             context += "From \(doc.source):\n\(doc.content)\n\n"
         }
-        
+
         return context
+    }
+
+    // MARK: - Context Fusion (RAG Step 3)
+
+    /// Fuses context from multiple documents with smart token limiting
+    /// This is the core of RAG - combines retrieval results into coherent context
+    func fuseContext(_ docs: [VectorDocument], for query: String, maxTokens: Int = 1000) -> String {
+        guard !docs.isEmpty else {
+            return ""
+        }
+
+        let queryLower = query.lowercased()
+        let queryWords = Set(queryLower.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 3 })
+
+        // Score and rank sentences
+        var scoredSentences: [(sentence: String, score: Float, source: String)] = []
+
+        for doc in docs {
+            let sentences = doc.content.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 15 }
+
+            for (idx, sentence) in sentences.enumerated() {
+                let sentenceLower = sentence.lowercased()
+                let sentenceWords = Set(sentenceLower.components(separatedBy: .whitespacesAndNewlines))
+
+                // Relevance score
+                let overlap = queryWords.intersection(sentenceWords)
+                var score = Float(overlap.count) / Float(max(queryWords.count, 1))
+
+                // Position bonus (earlier = more important)
+                if idx < 3 {
+                    score += 0.3
+                }
+
+                // Length penalty (too short or too long)
+                let wordCount = sentence.split(separator: " ").count
+                if wordCount < 5 || wordCount > 100 {
+                    score *= 0.5
+                }
+
+                scoredSentences.append((sentence, score, doc.source))
+            }
+        }
+
+        // Smart token limiting
+        var context = ""
+        var tokenCount = 0
+
+        let rankedSentences = scoredSentences
+            .sorted { $0.score > $1.score }
+            .filter { $0.score > 0.1 } // Minimum relevance threshold
+
+        for item in rankedSentences {
+            let sentenceTokens = item.sentence.split(separator: " ").count
+
+            // Stop if we exceed token limit
+            if tokenCount + sentenceTokens > maxTokens {
+                break
+            }
+
+            context += item.sentence + ". "
+            tokenCount += sentenceTokens
+        }
+
+        // Deduplicate and compress
+        let compressed = compressContext(context)
+
+        print("🧠 Context fusion complete:")
+        print("   Input docs: \(docs.count)")
+        print("   Sentences evaluated: \(scoredSentences.count)")
+        print("   Tokens used: \(tokenCount)/\(maxTokens)")
+        print("   Final length: \(compressed.count) chars")
+
+        return compressed
+    }
+
+    /// Compresses context by removing redundancy
+    private func compressContext(_ text: String) -> String {
+        // Remove duplicate sentences
+        let sentences = text.components(separatedBy: ". ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        var seen = Set<String>()
+        var unique: [String] = []
+
+        for sentence in sentences {
+            let normalized = sentence.lowercased()
+            if !seen.contains(normalized) {
+                seen.insert(normalized)
+                unique.append(sentence)
+            }
+        }
+
+        return unique.joined(separator: ". ")
+    }
+
+    /// Summarizes documents naturally using extractive + reformulation techniques
+    func summarizeDocuments(_ docs: [VectorDocument], for query: String) -> String {
+        let queryLower = query.lowercased()
+
+        guard !docs.isEmpty else {
+            return "No relevant documents found."
+        }
+
+        // Extract query keywords for relevance scoring
+        let queryWords = Set(queryLower.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 3 })
+
+        // Score and rank sentences from documents
+        var scoredSentences: [(sentence: String, score: Float, source: String)] = []
+
+        for doc in docs {
+            let sentences = doc.content.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 20 }
+
+            for sentence in sentences {
+                let sentenceLower = sentence.lowercased()
+                let sentenceWords = Set(sentenceLower.components(separatedBy: .whitespacesAndNewlines))
+
+                // Calculate relevance score based on query word overlap
+                let overlap = queryWords.intersection(sentenceWords)
+                let score = Float(overlap.count) / Float(max(queryWords.count, 1))
+
+                // Also consider position (earlier sentences often more important)
+                let positionBonus: Float = sentences.firstIndex(of: sentence) == 0 ? 0.2 : 0.0
+
+                scoredSentences.append((
+                    sentence: sentence,
+                    score: score + positionBonus,
+                    source: doc.source
+                ))
+            }
+        }
+
+        // Sort by relevance and take top sentences
+        let topSentences = scoredSentences
+            .sorted { $0.score > $1.score }
+            .prefix(3)
+
+        // Build natural summary
+        var summary = ""
+        var currentSource = ""
+
+        for item in topSentences where item.score > 0 {
+            if item.source != currentSource {
+                if !summary.isEmpty {
+                    summary += "\n\n"
+                }
+                summary += "From \(item.source):\n"
+                currentSource = item.source
+            }
+            summary += "• \(item.sentence).\n"
+        }
+
+        let rawSummary = summary.isEmpty ? "I couldn't find specific information matching your query." : summary
+
+        // Apply grammar arithmetic for fluent output
+        let refinedSummary = grammarRefiner.refineForContext(rawSummary, query: query)
+
+        print("📝 Summary refined for query: \"\(query.prefix(40))...\"")
+        print("   Fluency score: \(grammarRefiner.fluencyScore(refinedSummary))")
+
+        return refinedSummary
     }
 }
 
