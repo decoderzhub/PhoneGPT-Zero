@@ -33,14 +33,23 @@ struct ChatView: View {
                     SidebarView(
                         selectedSession: Binding(
                             get: { viewModel.currentSession },
-                            set: { if let session = $0 { viewModel.loadSession(session) } }
+                            set: {
+                                if let session = $0 {
+                                    viewModel.loadSession(session)
+                                    withAnimation {
+                                        showingSidebar = false
+                                    }
+                                }
+                            }
                         ),
                         showingSettings: $showingSettings,
                         sessions: sessions,
                         onNewChat: {
                             viewModel.createNewSession()
                             loadSessions()
-                            showingSidebar = false
+                            withAnimation {
+                                showingSidebar = false
+                            }
                         },
                         onDeleteSession: { session in
                             databaseService.deleteSession(session)
