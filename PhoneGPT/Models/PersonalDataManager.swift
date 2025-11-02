@@ -19,6 +19,9 @@ class PersonalDataManager: NSObject, ObservableObject {
         let embedding: [Float]
         let metadata: [String: Any] = [:]
     }
+
+    // Type alias for better semantic naming
+    typealias VectorDocument = DocumentEmbedding
     
     override init() {
         super.init()
@@ -454,17 +457,79 @@ class PersonalDataManager: NSObject, ObservableObject {
     
     func buildContext(for query: String) -> String {
         let relevantDocs = search(query: query, topK: 3)
-        
+
         guard !relevantDocs.isEmpty else {
             return ""
         }
-        
+
         var context = ""
         for doc in relevantDocs {
             context += "From \(doc.source):\n\(doc.content)\n\n"
         }
-        
+
         return context
+    }
+
+    /// Summarizes documents naturally using extractive + reformulation techniques
+    func summarizeDocuments(_ docs: [VectorDocument], for query: String) -> String {
+        let queryLower = query.lowercased()
+
+        guard !docs.isEmpty else {
+            return "No relevant documents found."
+        }
+
+        // Extract query keywords for relevance scoring
+        let queryWords = Set(queryLower.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 3 })
+
+        // Score and rank sentences from documents
+        var scoredSentences: [(sentence: String, score: Float, source: String)] = []
+
+        for doc in docs {
+            let sentences = doc.content.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 20 }
+
+            for sentence in sentences {
+                let sentenceLower = sentence.lowercased()
+                let sentenceWords = Set(sentenceLower.components(separatedBy: .whitespacesAndNewlines))
+
+                // Calculate relevance score based on query word overlap
+                let overlap = queryWords.intersection(sentenceWords)
+                let score = Float(overlap.count) / Float(max(queryWords.count, 1))
+
+                // Also consider position (earlier sentences often more important)
+                let positionBonus: Float = sentences.firstIndex(of: sentence) == 0 ? 0.2 : 0.0
+
+                scoredSentences.append((
+                    sentence: sentence,
+                    score: score + positionBonus,
+                    source: doc.source
+                ))
+            }
+        }
+
+        // Sort by relevance and take top sentences
+        let topSentences = scoredSentences
+            .sorted { $0.score > $1.score }
+            .prefix(3)
+
+        // Build natural summary
+        var summary = ""
+        var currentSource = ""
+
+        for item in topSentences where item.score > 0 {
+            if item.source != currentSource {
+                if !summary.isEmpty {
+                    summary += "\n\n"
+                }
+                summary += "From \(item.source):\n"
+                currentSource = item.source
+            }
+            summary += "• \(item.sentence).\n"
+        }
+
+        return summary.isEmpty ? "I couldn't find specific information matching your query." : summary
     }
 }
 
