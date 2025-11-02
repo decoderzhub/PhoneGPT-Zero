@@ -216,6 +216,32 @@ struct MainChatView: View {
                                 MessageBubbleView(message: message)
                                     .id(message.id)
                             }
+
+                            if modelManager.isGenerating && !modelManager.currentOutput.isEmpty {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(modelManager.currentOutput)
+                                            .padding()
+                                            .background(Color(UIColor.secondarySystemBackground))
+                                            .foregroundColor(.primary)
+                                            .cornerRadius(16)
+
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "waveform")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+
+                                            Text("\(String(format: "%.1f", modelManager.tokensPerSecond)) tokens/sec")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 4)
+                                    }
+
+                                    Spacer()
+                                }
+                                .id("generating")
+                            }
                         }
                         .padding()
                     }
@@ -223,6 +249,13 @@ struct MainChatView: View {
                         if let lastMessage = sessionManager.currentMessages.last {
                             withAnimation {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: modelManager.currentOutput) { _ in
+                        if modelManager.isGenerating {
+                            withAnimation {
+                                proxy.scrollTo("generating", anchor: .bottom)
                             }
                         }
                     }
@@ -253,6 +286,8 @@ struct MainChatView: View {
         Task {
             await sessionManager.addMessage(role: .user, content: currentPrompt)
 
+            modelManager.currentOutput = ""
+
             let response: String
 
             if usePersonalData && dataManager.indexedDocuments > 0 {
@@ -266,15 +301,17 @@ struct MainChatView: View {
                 print("💬 Using simple response (no documents)")
                 response = await modelManager.generate(
                     prompt: currentPrompt,
-                    maxTokens: 150
+                    maxTokens: 512
                 )
             }
 
             await sessionManager.addMessage(
                 role: .assistant,
                 content: response,
-                metadata: ["tokens_per_sec": "\(modelManager.tokensPerSecond)"]
+                metadata: ["tokens_per_sec": "\(String(format: "%.1f", modelManager.tokensPerSecond))"]
             )
+
+            modelManager.currentOutput = ""
         }
     }
 }
