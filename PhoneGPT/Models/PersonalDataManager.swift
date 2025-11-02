@@ -466,7 +466,7 @@ class PersonalDataManager: NSObject, ObservableObject {
     // MARK: - Intelligent Document Summarization
 
     /// Summarizes documents naturally using extractive + reformulation techniques
-    private func summarizeDocuments(_ docs: [VectorDocument], for query: String) -> String {
+    private func summarizeDocuments(_ docs: [DocumentEmbedding], for query: String) -> String {
         let queryLower = query.lowercased()
 
         // Detect query intent
@@ -486,7 +486,7 @@ class PersonalDataManager: NSObject, ObservableObject {
     }
 
     /// Generate natural summary by extracting and reformulating key sentences
-    private func generateNaturalSummary(from docs: [VectorDocument]) -> String {
+    private func generateNaturalSummary(from docs: [DocumentEmbedding]) -> String {
         // Extract key sentences from all docs
         var keySentences: [(sentence: String, score: Double)] = []
 
@@ -531,7 +531,7 @@ class PersonalDataManager: NSObject, ObservableObject {
     }
 
     /// Generate natural answer to specific questions
-    private func generateNaturalAnswer(from docs: [VectorDocument], for query: String) -> String {
+    private func generateNaturalAnswer(from docs: [DocumentEmbedding], for query: String) -> String {
         let queryKeywords = extractKeywords(from: query)
 
         // Find sentences containing query keywords
@@ -569,7 +569,7 @@ class PersonalDataManager: NSObject, ObservableObject {
     }
 
     /// Generate contextual response
-    private func generateContextualResponse(from docs: [VectorDocument], for query: String) -> String {
+    private func generateContextualResponse(from docs: [DocumentEmbedding], for query: String) -> String {
         // Extract most relevant information
         let queryKeywords = extractKeywords(from: query)
         var relevantInfo: [String] = []
