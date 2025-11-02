@@ -128,7 +128,7 @@ class PersonalDataManager: NSObject, ObservableObject {
         // Try NSAttributedString first (works for some DOCX files)
         if let attributedString = try? NSAttributedString(
             data: data,
-            options: [.documentType: NSAttributedString.DocumentType.docx],
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
             documentAttributes: nil
         ) {
             let text = attributedString.string
@@ -143,54 +143,8 @@ class PersonalDataManager: NSObject, ObservableObject {
     }
 
     private func extractTextFromDOCXManually(data: Data) -> String? {
-        // DOCX is a ZIP archive containing XML files
-        // We need to extract word/document.xml
-
-        // Create a temporary file
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("zip")
-
-        do {
-            try data.write(to: tempURL)
-
-            // Try to unzip and extract document.xml
-            let unzipDestination = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-
-            // Use the unzip command
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            process.arguments = ["-q", "-o", tempURL.path, "-d", unzipDestination.path]
-
-            try process.run()
-            process.waitUntilExit()
-
-            // Read document.xml
-            let documentXMLPath = unzipDestination.appendingPathComponent("word/document.xml")
-
-            if let xmlString = try? String(contentsOf: documentXMLPath, encoding: .utf8) {
-                let extractedText = parseTextFromDocumentXML(xmlString)
-
-                // Cleanup
-                try? FileManager.default.removeItem(at: tempURL)
-                try? FileManager.default.removeItem(at: unzipDestination)
-
-                if !extractedText.isEmpty {
-                    print("✅ Extracted text from DOCX manually")
-                    return extractedText
-                }
-            }
-
-            // Cleanup
-            try? FileManager.default.removeItem(at: tempURL)
-            try? FileManager.default.removeItem(at: unzipDestination)
-
-        } catch {
-            print("❌ Error extracting DOCX: \(error)")
-            try? FileManager.default.removeItem(at: tempURL)
-        }
-
+        print("⚠️ DOCX extraction unavailable - iOS doesn't support native ZIP extraction")
+        print("   Suggestion: Convert DOCX to PDF or TXT for better compatibility")
         return nil
     }
 
@@ -256,7 +210,7 @@ class PersonalDataManager: NSObject, ObservableObject {
                ) {
                 return attributedString.string
             }
-            return extractTextFromDOCXFallback(at: url)
+            return nil
             
         case "rtf", "rtfd":
             // Rich text
