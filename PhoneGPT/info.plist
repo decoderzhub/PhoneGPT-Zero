@@ -6,6 +6,12 @@
 	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 	<key>SUPABASE_URL</key>
 	<string>https://xbhlxoctzwcgzgkixnls.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>

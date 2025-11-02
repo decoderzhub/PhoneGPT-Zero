@@ -37,7 +37,10 @@ struct ChatViewWithSessions: View {
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: showSidebar)
+            .navigationBarHidden(true)
+            .statusBar(hidden: true)
         }
+        .ignoresSafeArea()
     }
 }
 
