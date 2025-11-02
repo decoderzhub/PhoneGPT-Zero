@@ -84,7 +84,8 @@ struct ChatView: View {
                     importedDocuments: viewModel.getImportedDocuments(),
                     onClearDocuments: {
                         viewModel.clearDocuments()
-                    }
+                    },
+                    mlxService: viewModel.getMLXService()
                 )
             }
             .sheet(isPresented: $showingDocumentPicker) {

@@ -11,7 +11,11 @@ struct SettingsView: View {
     @Bindable var settings: AppSettings
     let importedDocuments: [ImportedDocument]
     let onClearDocuments: () -> Void
+    let mlxService: MLXService
     @Environment(\.dismiss) private var dismiss
+
+    @State private var showingDeleteConfirmation = false
+    @State private var modelStorageSize: String = "Calculating..."
 
     var body: some View {
         NavigationStack {
@@ -91,6 +95,31 @@ struct SettingsView: View {
 
                 Section {
                     HStack {
+                        Text("Model Storage Size")
+                        Spacer()
+                        Text(modelStorageSize)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if mlxService.hasDownloadedModels() {
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete Downloaded Models")
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Model Storage")
+                } footer: {
+                    Text("Downloaded models are stored locally on your device. Deleting them will free up space but require re-downloading when needed.")
+                        .font(.caption)
+                }
+
+                Section {
+                    HStack {
                         Text("Version")
                         Spacer()
                         Text("1.0.0")
@@ -98,15 +127,15 @@ struct SettingsView: View {
                     }
 
                     HStack {
-                        Text("Model Storage")
+                        Text("Privacy")
                         Spacer()
-                        Text("Local")
-                            .foregroundColor(.secondary)
+                        Text("100% On-Device")
+                            .foregroundColor(.green)
                     }
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("PhoneGPT runs entirely on your device. Models are downloaded once and cached locally. No data leaves your device unless you explicitly enable cloud features in settings.")
+                    Text("PhoneGPT runs entirely on your device. No data leaves your device.")
                         .font(.caption)
                 }
             }
@@ -119,6 +148,30 @@ struct SettingsView: View {
                     }
                 }
             }
+            .alert("Delete Downloaded Models?", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteModels()
+                }
+            } message: {
+                Text("This will delete all downloaded models from your device. You'll need to download them again when needed.")
+            }
+            .onAppear {
+                updateStorageSize()
+            }
         }
+    }
+
+    private func deleteModels() {
+        do {
+            try mlxService.deleteDownloadedModels()
+            updateStorageSize()
+        } catch {
+            print("Error deleting models: \(error)")
+        }
+    }
+
+    private func updateStorageSize() {
+        modelStorageSize = mlxService.getModelStorageSize()
     }
 }

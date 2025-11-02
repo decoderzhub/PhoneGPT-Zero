@@ -163,5 +163,60 @@ class MLXService {
     var cachedModelCount: Int {
         0
     }
+
+    /// Delete all downloaded model files from disk
+    func deleteDownloadedModels() throws {
+        let hubDirectory = HubApi.default.downloadBase
+
+        guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
+            print("📁 No models directory found")
+            return
+        }
+
+        try FileManager.default.removeItem(at: hubDirectory)
+        modelCache.removeAllObjects()
+        print("🗑️ Deleted all downloaded models from \(hubDirectory.path)")
+    }
+
+    /// Check if any models are downloaded
+    func hasDownloadedModels() -> Bool {
+        let hubDirectory = HubApi.default.downloadBase
+
+        guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
+            return false
+        }
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: hubDirectory, includingPropertiesForKeys: [.isDirectoryKey])
+            return !contents.isEmpty
+        } catch {
+            return false
+        }
+    }
+
+    /// Get approximate size of downloaded models
+    func getModelStorageSize() -> String {
+        let hubDirectory = HubApi.default.downloadBase
+
+        guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
+            return "0 MB"
+        }
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: hubDirectory, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles])
+
+            var totalSize: Int64 = 0
+            for url in contents {
+                let resourceValues = try url.resourceValues(forKeys: [.totalFileSizeKey, .fileSizeKey])
+                totalSize += Int64(resourceValues.totalFileSize ?? resourceValues.fileSize ?? 0)
+            }
+
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .file
+            return formatter.string(fromByteCount: totalSize)
+        } catch {
+            return "Unknown"
+        }
+    }
 }
 

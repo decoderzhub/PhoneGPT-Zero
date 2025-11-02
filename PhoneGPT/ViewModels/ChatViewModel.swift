@@ -176,4 +176,8 @@ class ChatViewModel {
         guard let session = currentSession else { return [] }
         return databaseService.fetchDocuments(for: session)
     }
+
+    func getMLXService() -> MLXService {
+        return mlxService
+    }
 }
