@@ -66,6 +66,8 @@ class DatabaseService: ObservableObject {
 
         session.updatedAt = Date()
         saveContext()
+
+        print("💾 DB: Saved \(role) message to session '\(session.title ?? "Untitled")' (ID: \(session.objectID))")
         return message
     }
 
@@ -75,9 +77,11 @@ class DatabaseService: ObservableObject {
         request.sortDescriptors = [NSSortDescriptor(keyPath: \ChatMessage.timestamp, ascending: true)]
 
         do {
-            return try viewContext.fetch(request)
+            let messages = try viewContext.fetch(request)
+            print("🔍 DB: Fetched \(messages.count) messages for session '\(session.title ?? "Untitled")' (ID: \(session.objectID))")
+            return messages
         } catch {
-            print("Error fetching messages: \(error)")
+            print("❌ DB: Error fetching messages: \(error)")
             return []
         }
     }
@@ -102,9 +106,11 @@ class DatabaseService: ObservableObject {
         request.sortDescriptors = [NSSortDescriptor(keyPath: \ImportedDocument.importedAt, ascending: true)]
 
         do {
-            return try viewContext.fetch(request)
+            let documents = try viewContext.fetch(request)
+            print("🔍 DB: Fetched \(documents.count) documents for session '\(session.title ?? "Untitled")' (ID: \(session.objectID))")
+            return documents
         } catch {
-            print("Error fetching documents: \(error)")
+            print("❌ DB: Error fetching documents: \(error)")
             return []
         }
     }

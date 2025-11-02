@@ -56,13 +56,24 @@ class ChatViewModel {
     }
 
     func loadSession(_ session: ChatSession) {
-        print("📂 Loading session: \(session.title ?? "Untitled")")
+        let sessionId = session.objectID
+        let sessionTitle = session.title ?? "Untitled"
+        print("📂 Loading session: \(sessionTitle) (ID: \(sessionId))")
+
+        // Cancel any ongoing generation
+        generateTask?.cancel()
+        isGenerating = false
+
+        // Set current session FIRST before loading messages
         self.currentSession = session
 
         // ✅ FIX: Fetch fresh messages from database
         let savedMessages = databaseService.fetchMessages(for: session)
 
         print("   Found \(savedMessages.count) messages in database")
+
+        // Clear messages array completely before loading new ones
+        self.messages.removeAll()
 
         self.messages = savedMessages.map { msg in
             let role: Message.Role = msg.role == "user" ? .user : (msg.role == "assistant" ? .assistant : .system)
@@ -75,6 +86,8 @@ class ChatViewModel {
             messages.insert(systemMessage, at: 0)
             print("   Added system message")
         }
+
+        print("   Loaded \(messages.count) messages into UI")
     }
 
     func createNewSession() {
@@ -113,7 +126,10 @@ class ChatViewModel {
             return
         }
 
-        print("💬 Sending message to session: \(session.title ?? "Untitled")")
+        // ✅ Capture session ID to prevent race conditions
+        let sessionId = session.objectID
+        let sessionTitle = session.title ?? "Untitled"
+        print("💬 Sending message to session: \(sessionTitle) (ID: \(sessionId))")
 
         isGenerating = true
         errorMessage = nil
@@ -127,10 +143,12 @@ class ChatViewModel {
 
         var relevantContext = ""
         if settings.useDocuments {
-            print("📚 Document search enabled")
+            let documents = databaseService.fetchDocuments(for: session)
+            print("📚 Document search enabled - Session has \(documents.count) documents")
+
             let contextChunks = documentService.searchDocuments(query: userPrompt, session: session, topK: 3)
             if !contextChunks.isEmpty {
-                print("✅ Found \(contextChunks.count) relevant document chunks")
+                print("✅ Found \(contextChunks.count) relevant document chunks for session: \(sessionTitle)")
                 relevantContext = "Here is relevant information from the user's documents:\n\n" + contextChunks.joined(separator: "\n\n") + "\n\nBased on this information and your knowledge, please answer: "
             } else {
                 print("⚠️ No relevant document chunks found")
@@ -176,11 +194,24 @@ class ChatViewModel {
                     }
                 }
 
-                _ = databaseService.addMessage(to: session, content: fullResponse, role: "assistant")
+                // ✅ Verify we're still on the same session before saving
+                guard let currentSessionId = self.currentSession?.objectID,
+                      currentSessionId == sessionId else {
+                    print("⚠️ Session changed during generation - discarding response")
+                    return
+                }
+
+                guard let activeSession = self.currentSession else {
+                    print("❌ No active session - cannot save response")
+                    return
+                }
+
+                _ = databaseService.addMessage(to: activeSession, content: fullResponse, role: "assistant")
+                print("✅ Saved assistant response to session: \(activeSession.title ?? "Untitled")")
 
                 // ✅ FIX: Properly detect first user message
                 // Fetch all messages to get accurate count
-                let allMessages = databaseService.fetchMessages(for: session)
+                let allMessages = databaseService.fetchMessages(for: activeSession)
                 let userMessages = allMessages.filter { $0.role == "user" }
 
                 if userMessages.count == 1 {
@@ -190,7 +221,7 @@ class ChatViewModel {
                     let title = titleLines.first ?? userPrompt
                     let truncatedTitle = String(title.prefix(50))
 
-                    databaseService.updateSessionTitle(session, title: truncatedTitle)
+                    databaseService.updateSessionTitle(activeSession, title: truncatedTitle)
                     print("✅ Session titled: '\(truncatedTitle)'")
                 }
 
