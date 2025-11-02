@@ -87,3 +87,4 @@ test_messages.txt
 temp/
 tmp/
 cache/*.mlmodel
+.env
