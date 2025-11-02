@@ -1,19 +1,19 @@
 import SwiftUI
 
 struct MessageBubble: View {
-    let message: ChatMessage
-    
+    let message: Message
+
     var body: some View {
         HStack {
             if message.role == .user {
                 Spacer()
             }
-            
+
             Text(message.content)
                 .padding()
                 .background(
-                    message.role == .user 
-                        ? Color.blue 
+                    message.role == .user
+                        ? Color.blue
                         : Color(UIColor.secondarySystemBackground)
                 )
                 .foregroundColor(message.role == .user ? .white : .primary)
@@ -25,7 +25,7 @@ struct MessageBubble: View {
                         Label("Copy", systemImage: "doc.on.doc")
                     }
                 }
-            
+
             if message.role == .assistant {
                 Spacer()
             }

@@ -82,15 +82,8 @@ class MLXService {
 
         print("📥 Loading \(model.name) from Hugging Face Hub...")
 
-        let factory: ModelFactory = switch model.type {
-        case .llm:
-            LLMModelFactory.shared
-        case .vlm:
-            VLMModelFactory.shared
-        }
-
-        let container = try await factory.loadContainer(
-            hub: .default,
+        let container = try await LLMModelFactory.shared.loadContainer(
+            hub: HubApi(),
             configuration: model.configuration
         ) { progress in
             Task { @MainActor in
@@ -156,8 +149,8 @@ class MLXService {
             let lmInput = try await context.processor.prepare(input: userInput)
 
             let parameters = GenerateParameters(
-                temperature: 0.7,
-                maxTokens: 512
+                maxTokens: 512,
+                temperature: 0.7
             )
 
             print("🤖 Generating response...")
