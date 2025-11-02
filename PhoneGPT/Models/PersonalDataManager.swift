@@ -10,7 +10,9 @@ class PersonalDataManager: NSObject, ObservableObject {
     @Published var isIndexing = false
     
     private var vectorDB: [DocumentEmbedding] = []
-    private let embedder = NLEmbedding.wordEmbedding(for: .english)
+    // Use sentence embeddings for better semantic understanding
+    private let embedder = NLEmbedding.sentenceEmbedding(for: .english)
+    private let embeddingDimension = 768 // Apple's sentence embedding dimension
     
     struct DocumentEmbedding {
         let content: String
@@ -24,6 +26,18 @@ class PersonalDataManager: NSObject, ObservableObject {
     
     override init() {
         super.init()
+
+        // Verify semantic embedding availability
+        if embedder != nil {
+            print("✅ Semantic embeddings initialized (NLEmbedding)")
+            // Test embedding to get actual dimension
+            if let testVec = embedder?.vector(for: "test") {
+                print("   📊 Embedding dimension: \(testVec.count)")
+            }
+        } else {
+            print("⚠️ Semantic embeddings unavailable - using hash-based fallback")
+        }
+
         // REMOVED auto-loading - starts with empty database
         // loadDefaultDocuments() // <-- COMMENTED OUT
     }
@@ -325,10 +339,27 @@ class PersonalDataManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Semantic Embeddings with NLEmbedding
+
     private func createEmbedding(for text: String) -> [Float] {
+        // Try to use Apple's semantic sentence embeddings
+        if let semanticEmbedder = embedder,
+           let vector = semanticEmbedder.vector(for: text) {
+            // NLEmbedding returns normalized vectors already
+            print("🧠 Using semantic embedding (dim: \(vector.count))")
+            return vector
+        }
+
+        // Fallback to hash-based embeddings if NLEmbedding unavailable
+        print("⚠️ Falling back to hash-based embedding")
+        return createHashBasedEmbedding(for: text)
+    }
+
+    // Legacy hash-based embedding (fallback)
+    private func createHashBasedEmbedding(for text: String) -> [Float] {
         var embedding = Array(repeating: Float(0), count: 128)
         let words = text.lowercased().components(separatedBy: .whitespacesAndNewlines)
-        
+
         for word in words {
             let hash = word.hashValue
             for i in 0..<128 {
@@ -336,12 +367,12 @@ class PersonalDataManager: NSObject, ObservableObject {
                 embedding[i] += Float(shifted & 1) * 2 - 1
             }
         }
-        
+
         let norm = sqrt(embedding.reduce(0) { $0 + $1 * $1 })
         if norm > 0 {
             embedding = embedding.map { $0 / norm }
         }
-        
+
         return embedding
     }
     
@@ -359,24 +390,38 @@ class PersonalDataManager: NSObject, ObservableObject {
         return chunks
     }
     
-    // MARK: - Search
-    
+    // MARK: - Semantic Search
+
     func search(query: String, topK: Int = 3) -> [DocumentEmbedding] {
         guard !vectorDB.isEmpty else { return [] }
-        
+
         let queryEmbedding = createEmbedding(for: query)
-        
+
+        print("🔍 Searching \(vectorDB.count) documents with semantic similarity")
+        print("   Query: \"\(query.prefix(50))...\"")
+        print("   Embedding dim: \(queryEmbedding.count)")
+
         let scores = vectorDB.map { doc in
             (doc, cosineSimilarity(queryEmbedding, doc.embedding))
         }
-        
-        return scores.sorted { $0.1 > $1.1 }
+
+        let topResults = scores.sorted { $0.1 > $1.1 }
             .prefix(topK)
-            .map { $0.0 }
+
+        // Log top matches for debugging
+        for (idx, result) in topResults.enumerated() {
+            let preview = result.0.content.prefix(60)
+            print("   [\(idx+1)] Score: \(String(format: "%.3f", result.1)) - \"\(preview)...\"")
+        }
+
+        return topResults.map { $0.0 }
     }
     
     private func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Float {
-        guard a.count == b.count else { return 0 }
+        guard a.count == b.count else {
+            print("⚠️ Embedding dimension mismatch: \(a.count) vs \(b.count)")
+            return 0
+        }
         
         var dotProduct: Float = 0
         var normA: Float = 0
