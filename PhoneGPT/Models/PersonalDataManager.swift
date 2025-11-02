@@ -4,7 +4,6 @@ import UniformTypeIdentifiers
 import NaturalLanguage
 import PDFKit
 import CoreGraphics
-import ZIPFoundation
 
 class PersonalDataManager: NSObject, ObservableObject {
     @Published var indexedDocuments: Int = 0
@@ -101,73 +100,11 @@ class PersonalDataManager: NSObject, ObservableObject {
         return fullText.isEmpty ? nil : fullText
     }
     
-    // MARK: - DOCX Text Extraction with ZIPFoundation
-    
+    // MARK: - DOCX Text Extraction (Fallback Method)
+
     private func extractTextFromDOCX(at url: URL) -> String? {
-        do {
-            // Try to open as archive (DOCX is a ZIP file)
-            guard let archive = Archive(url: url, accessMode: .read) else {
-                print("❌ Could not open DOCX as archive")
-                return extractTextFromDOCXFallback(at: url)
-            }
-            
-            var extractedText = ""
-            
-            // Look for word/document.xml
-            for entry in archive {
-                if entry.path == "word/document.xml" || entry.path.contains("word/document.xml") {
-                    var xmlData = Data()
-                    _ = try archive.extract(entry) { data in
-                        xmlData.append(data)
-                    }
-                    
-                    // Parse XML to extract text
-                    if let xmlString = String(data: xmlData, encoding: .utf8) {
-                        extractedText = parseWordXML(xmlString)
-                    }
-                    break
-                }
-            }
-            
-            if !extractedText.isEmpty {
-                print("✅ Extracted \(extractedText.count) characters from DOCX")
-                return extractedText
-            }
-            
-            // Fallback if no text found
-            return extractTextFromDOCXFallback(at: url)
-            
-        } catch {
-            print("❌ Error reading DOCX: \(error)")
-            return extractTextFromDOCXFallback(at: url)
-        }
-    }
-    
-    // Parse Word XML to extract text
-    private func parseWordXML(_ xml: String) -> String {
-        var text = ""
-        
-        // Extract text from <w:t> tags (Word text elements)
-        let pattern = "<w:t[^>]*>([^<]+)</w:t>"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-            let matches = regex.matches(in: xml, range: NSRange(xml.startIndex..., in: xml))
-            
-            for match in matches {
-                if let range = Range(match.range(at: 1), in: xml) {
-                    text += String(xml[range]) + " "
-                }
-            }
-        }
-        
-        // Clean up XML entities
-        text = text.replacingOccurrences(of: "&amp;", with: "&")
-        text = text.replacingOccurrences(of: "&lt;", with: "<")
-        text = text.replacingOccurrences(of: "&gt;", with: ">")
-        text = text.replacingOccurrences(of: "&quot;", with: "\"")
-        text = text.replacingOccurrences(of: "&#39;", with: "'")
-        text = text.replacingOccurrences(of: "&apos;", with: "'")
-        
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Use fallback extraction (ZIPFoundation removed for simplicity)
+        return extractTextFromDOCXFallback(at: url)
     }
     
     // Fallback DOCX extraction
