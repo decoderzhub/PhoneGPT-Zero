@@ -25,6 +25,8 @@ struct ChatView: View {
     @State private var hasModel = false
     @State private var showScrollToBottom = false
     @State private var importedDocuments: [ImportedDocument] = []
+    @State private var importError: String?
+    @State private var showingImportError = false
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -98,11 +100,29 @@ struct ChatView: View {
                 DocumentPicker { urls in
                     Task {
                         for url in urls {
-                            try? await viewModel.importDocument(url: url)
+                            do {
+                                try await viewModel.importDocument(url: url)
+                                print("✅ Successfully imported: \(url.lastPathComponent)")
+                            } catch {
+                                print("❌ Import failed: \(error)")
+                                await MainActor.run {
+                                    importError = "Failed to import \(url.lastPathComponent): \(error.localizedDescription)"
+                                    showingImportError = true
+                                }
+                            }
                         }
-                        loadDocuments()
+                        await MainActor.run {
+                            loadDocuments()
+                        }
                     }
                 }
+            }
+            .alert("Import Error", isPresented: $showingImportError) {
+                Button("OK", role: .cancel) {
+                    importError = nil
+                }
+            } message: {
+                Text(importError ?? "Unknown error")
             }
             .onAppear {
                 loadSessions()
@@ -229,7 +249,7 @@ struct ChatView: View {
                                 Button(action: {
                                     deleteDocument(document)
                                 }) {
-                                    Image(systemName: "trash.fill")
+                                    Image(systemName: "xmark.circle.fill")
                                         .font(.caption)
                                         .foregroundColor(.red)
                                 }
@@ -312,6 +332,7 @@ struct ChatView: View {
             return
         }
         importedDocuments = databaseService.fetchDocuments(for: session)
+        print("📋 Loaded \(importedDocuments.count) documents for current session")
     }
 
     private func deleteDocument(_ document: ImportedDocument) {
@@ -349,8 +370,10 @@ struct DocumentPicker: UIViewControllerRepresentable {
             .pdf,
             .text,
             UTType(filenameExtension: "md")!,
-            UTType(filenameExtension: "txt")!
-        ], asCopy: true)
+            UTType(filenameExtension: "txt")!,
+            UTType(filenameExtension: "docx")!,
+            UTType(filenameExtension: "doc")!
+        ], asCopy: true) // CRITICAL: asCopy must be true
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
         return picker
@@ -370,7 +393,16 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            print("📎 Document picker selected \(urls.count) files")
+            for url in urls {
+                print("   - \(url.lastPathComponent)")
+                print("     Path: \(url.path)")
+            }
             onPick(urls)
+        }
+        
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            print("📎 Document picker cancelled")
         }
     }
 }

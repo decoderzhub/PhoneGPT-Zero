@@ -109,14 +109,21 @@ class ChatViewModel {
 
         var relevantContext = ""
         if settings.useDocuments {
+            print("📚 Document search enabled")
             let contextChunks = documentService.searchDocuments(query: userPrompt, session: session, topK: 3)
             if !contextChunks.isEmpty {
-                relevantContext = "Relevant context from documents:\n" + contextChunks.joined(separator: "\n\n") + "\n\n"
+                print("✅ Found \(contextChunks.count) relevant document chunks")
+                relevantContext = "Here is relevant information from the user's documents:\n\n" + contextChunks.joined(separator: "\n\n") + "\n\nBased on this information and your knowledge, please answer: "
+            } else {
+                print("⚠️ No relevant document chunks found")
             }
+        } else {
+            print("📚 Document search disabled in settings")
         }
 
         var contextMessages = messages
         if !relevantContext.isEmpty, let lastUserIndex = contextMessages.lastIndex(where: { $0.role == .user }) {
+            print("🔄 Adding document context to user message")
             contextMessages[lastUserIndex] = Message.user(relevantContext + userPrompt)
         }
 
@@ -185,7 +192,14 @@ class ChatViewModel {
 
     func importDocument(url: URL) async throws {
         guard let session = currentSession else { return }
-        _ = try await documentService.importDocument(url: url, to: session)
+        print("📎 Attempting to import document...")
+        do {
+            let doc = try await documentService.importDocument(url: url, to: session)
+            print("✅ Successfully imported: \(doc.fileName ?? "unknown")")
+        } catch {
+            print("❌ Failed to import document: \(error)")
+            throw error
+        }
     }
 
     func clearDocuments() {
@@ -195,7 +209,9 @@ class ChatViewModel {
 
     func getImportedDocuments() -> [ImportedDocument] {
         guard let session = currentSession else { return [] }
-        return databaseService.fetchDocuments(for: session)
+        let docs = databaseService.fetchDocuments(for: session)
+        print("📋 Retrieved \(docs.count) imported documents for current session")
+        return docs
     }
 
     func getMLXService() -> MLXService {

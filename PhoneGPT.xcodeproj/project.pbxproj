@@ -53,7 +53,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		385BE43E2EB745A700D6534C /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */ = {
+		38338E9D2EB817FE004E01B2 /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -66,7 +66,7 @@
 		38C8DF8F2EB5891A005D4A56 /* PhoneGPT */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				385BE43E2EB745A700D6534C /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */,
+				38338E9D2EB817FE004E01B2 /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */,
 			);
 			path = PhoneGPT;
 			sourceTree = "<group>";
