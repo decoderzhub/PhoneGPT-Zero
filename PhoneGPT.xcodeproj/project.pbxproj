@@ -7,7 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		38B7D9E92EB70F3A0009DCD1 /* PhoneGPT.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 38B7D9E72EB70F3A0009DCD1 /* PhoneGPT.xcdatamodeld */; };
+		385BE42A2EB7425200D6534C /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4292EB7425200D6534C /* Auth */; };
+		385BE42C2EB7425200D6534C /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE42B2EB7425200D6534C /* Functions */; };
+		385BE42E2EB7425200D6534C /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE42D2EB7425200D6534C /* PostgREST */; };
+		385BE4302EB7425200D6534C /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE42F2EB7425200D6534C /* Realtime */; };
+		385BE4322EB7425200D6534C /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4312EB7425200D6534C /* Storage */; };
+		385BE4342EB7425200D6534C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4332EB7425200D6534C /* Supabase */; };
+		385BE4372EB7427E00D6534C /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4362EB7427E00D6534C /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,15 +34,27 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		38B7D9E82EB70F3A0009DCD1 /* PhoneGPT.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = PhoneGPT.xcdatamodel; sourceTree = "<group>"; };
 		38C8DF8D2EB5891A005D4A56 /* PhoneGPT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhoneGPT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38C8DF9F2EB5891C005D4A56 /* PhoneGPTTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhoneGPTTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38C8DFA92EB5891C005D4A56 /* PhoneGPTUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhoneGPTUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		385BE43E2EB745A700D6534C /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 38C8DF8C2EB5891A005D4A56 /* PhoneGPT */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		38C8DF8F2EB5891A005D4A56 /* PhoneGPT */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				385BE43E2EB745A700D6534C /* Exceptions for "PhoneGPT" folder in "PhoneGPT" target */,
+			);
 			path = PhoneGPT;
 			sourceTree = "<group>";
 		};
@@ -57,6 +75,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				385BE42E2EB7425200D6534C /* PostgREST in Frameworks */,
+				385BE42C2EB7425200D6534C /* Functions in Frameworks */,
+				385BE4342EB7425200D6534C /* Supabase in Frameworks */,
+				385BE42A2EB7425200D6534C /* Auth in Frameworks */,
+				385BE4322EB7425200D6534C /* Storage in Frameworks */,
+				385BE4302EB7425200D6534C /* Realtime in Frameworks */,
+				385BE4372EB7427E00D6534C /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -80,7 +105,6 @@
 		38C8DF842EB5891A005D4A56 = {
 			isa = PBXGroup;
 			children = (
-				38B7D9E72EB70F3A0009DCD1 /* PhoneGPT.xcdatamodeld */,
 				38C8DF8F2EB5891A005D4A56 /* PhoneGPT */,
 				38C8DFA22EB5891C005D4A56 /* PhoneGPTTests */,
 				38C8DFAC2EB5891C005D4A56 /* PhoneGPTUITests */,
@@ -118,6 +142,13 @@
 			);
 			name = PhoneGPT;
 			packageProductDependencies = (
+				385BE4292EB7425200D6534C /* Auth */,
+				385BE42B2EB7425200D6534C /* Functions */,
+				385BE42D2EB7425200D6534C /* PostgREST */,
+				385BE42F2EB7425200D6534C /* Realtime */,
+				385BE4312EB7425200D6534C /* Storage */,
+				385BE4332EB7425200D6534C /* Supabase */,
+				385BE4362EB7427E00D6534C /* ZIPFoundation */,
 			);
 			productName = PhoneGPT;
 			productReference = 38C8DF8D2EB5891A005D4A56 /* PhoneGPT.app */;
@@ -203,6 +234,8 @@
 			mainGroup = 38C8DF842EB5891A005D4A56;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				385BE4352EB7427E00D6534C /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 38C8DF8E2EB5891A005D4A56 /* Products */;
@@ -245,7 +278,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				38B7D9E92EB70F3A0009DCD1 /* PhoneGPT.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,6 +364,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/PhoneGPT/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -390,6 +424,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/PhoneGPT/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -411,6 +447,7 @@
 				DEVELOPMENT_TEAM = XWH35UL2UW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/PhoneGPT/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -442,6 +479,7 @@
 				DEVELOPMENT_TEAM = XWH35UL2UW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/PhoneGPT/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -579,18 +617,62 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCVersionGroup section */
-		38B7D9E72EB70F3A0009DCD1 /* PhoneGPT.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-				38B7D9E82EB70F3A0009DCD1 /* PhoneGPT.xcdatamodel */,
-			);
-			currentVersion = 38B7D9E82EB70F3A0009DCD1 /* PhoneGPT.xcdatamodel */;
-			path = PhoneGPT.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
+/* Begin XCRemoteSwiftPackageReference section */
+		385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
 		};
-/* End XCVersionGroup section */
+		385BE4352EB7427E00D6534C /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		385BE4292EB7425200D6534C /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		385BE42B2EB7425200D6534C /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		385BE42D2EB7425200D6534C /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		385BE42F2EB7425200D6534C /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		385BE4312EB7425200D6534C /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		385BE4332EB7425200D6534C /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		385BE4362EB7427E00D6534C /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 385BE4352EB7427E00D6534C /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 38C8DF852EB5891A005D4A56 /* Project object */;
 }
