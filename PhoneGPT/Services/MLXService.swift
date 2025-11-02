@@ -9,6 +9,7 @@ import Foundation
 import MLX
 import MLXLLM
 import MLXLMCommon
+import Hub
 
 /// Service for loading and running language models via MLX
 /// Handles model caching, download progress, and text generation
@@ -111,7 +112,7 @@ class MLXService {
     func generate(
         messages: [Message],
         model: LMModel
-    ) async throws -> AsyncStream<Generation> {
+    ) async throws -> AsyncStream<MLXLMCommon.Generation> {
         print("🔄 Loading model for generation...")
         let container = try await load(model: model)
 
@@ -175,16 +176,4 @@ class MLXService {
     var cachedModelCount: Int {
         0
     }
-}
-
-// MARK: - Generation Event
-
-/// Event emitted during text generation
-enum Generation {
-    /// Generated text chunk
-    case chunk(String)
-    /// Generation metrics
-    case info(GenerateCompletionInfo)
-    /// Tool call (for future extension)
-    case toolCall(String)
 }

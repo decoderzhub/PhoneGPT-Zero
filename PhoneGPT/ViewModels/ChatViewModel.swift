@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import MLXLMCommon
 
 /// ViewModel managing chat interface and message generation
 @Observable
@@ -100,16 +101,16 @@ class ChatViewModel {
 
                 for try await generation in stream {
                     switch generation {
-                    case .chunk(let token):
+                    case .token(let token):
                         if var lastMessage = messages.last, lastMessage.role == .assistant {
                             lastMessage.content += token
                             messages[messages.count - 1] = lastMessage
                         }
 
-                    case .info(let info):
+                    case .complete(let info):
                         print("📊 Metrics: \(info.tokensPerSecond) tok/s")
 
-                    case .toolCall:
+                    case .data:
                         break
                     }
                 }
