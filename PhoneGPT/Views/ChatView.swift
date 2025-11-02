@@ -19,7 +19,9 @@ struct ChatView: View {
     @State private var showingDocumentPicker = false
     @State private var scrollProxy: ScrollViewProxy?
     @FocusState private var isInputFocused: Bool
-    @State private var mlxService: MLXService?
+    @State private var showingDownloadAlert = false
+    @State private var downloadProgress: Double = 0.0
+    @State private var downloadingModelName: String = ""
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -100,25 +102,20 @@ struct ChatView: View {
             }
             .onAppear {
                 loadSessions()
-                mlxService = viewModel.getMLXService()
                 if viewModel.currentSession == nil {
                     viewModel.createNewSession()
                     loadSessions()
                 }
+                startMonitoringDownloads()
             }
-            .alert("Downloading Model", isPresented: Binding(
-                get: { mlxService?.isDownloading ?? false },
-                set: { _ in }
-            )) {
-                Button("OK") { }
+            .alert("Downloading Model", isPresented: $showingDownloadAlert) {
+                EmptyView()
             } message: {
-                if let service = mlxService {
-                    VStack {
-                        Text("⚠️ Connecting to Internet")
-                            .font(.headline)
-                        Text("\nDownloading \(service.downloadingModelName)")
-                        Text("\nProgress: \(Int(service.downloadProgress * 100))%")
-                    }
+                VStack {
+                    Text("⚠️ Connecting to Internet")
+                        .font(.headline)
+                    Text("\nDownloading \(downloadingModelName)")
+                    Text("\nProgress: \(Int(downloadProgress * 100))%")
                 }
             }
         }
@@ -177,6 +174,23 @@ struct ChatView: View {
 
     private func loadSessions() {
         sessions = databaseService.fetchAllSessions()
+    }
+
+    private func startMonitoringDownloads() {
+        Task {
+            let mlxService = viewModel.getMLXService()
+            while true {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+
+                if mlxService.isDownloading {
+                    showingDownloadAlert = true
+                    downloadProgress = mlxService.downloadProgress
+                    downloadingModelName = mlxService.downloadingModelName
+                } else if showingDownloadAlert {
+                    showingDownloadAlert = false
+                }
+            }
+        }
     }
 }
 
