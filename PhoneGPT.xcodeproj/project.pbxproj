@@ -14,10 +14,6 @@
 		385BE4322EB7425200D6534C /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4312EB7425200D6534C /* Storage */; };
 		385BE4342EB7425200D6534C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4332EB7425200D6534C /* Supabase */; };
 		385BE4372EB7427E00D6534C /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 385BE4362EB7427E00D6534C /* ZIPFoundation */; };
-		38MLX0012EB7500000D6534C /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 38MLX0012EB7500000D6534C /* MLX */; };
-		38MLX0022EB7500000D6534C /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 38MLX0022EB7500000D6534C /* MLXLLM */; };
-		38MLX0032EB7500000D6534C /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 38MLX0032EB7500000D6534C /* MLXLMCommon */; };
-		38MLX0042EB7500000D6534C /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 38MLX0042EB7500000D6534C /* MLXNN */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,10 +82,6 @@
 				385BE4322EB7425200D6534C /* Storage in Frameworks */,
 				385BE4302EB7425200D6534C /* Realtime in Frameworks */,
 				385BE4372EB7427E00D6534C /* ZIPFoundation in Frameworks */,
-				38MLX0012EB7500000D6534C /* MLX in Frameworks */,
-				38MLX0022EB7500000D6534C /* MLXLLM in Frameworks */,
-				38MLX0032EB7500000D6534C /* MLXLMCommon in Frameworks */,
-				38MLX0042EB7500000D6534C /* MLXNN in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,8 +236,6 @@
 			packageReferences = (
 				385BE4282EB7425200D6534C /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				385BE4352EB7427E00D6534C /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
-				38MLX0002EB7500000D6534C /* XCRemoteSwiftPackageReference "mlx-swift" */,
-				38MLX0012EB7500000D6534D /* XCRemoteSwiftPackageReference "mlx-swift-examples" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 38C8DF8E2EB5891A005D4A56 /* Products */;
@@ -644,22 +634,6 @@
 				minimumVersion = 0.9.20;
 			};
 		};
-		38MLX0002EB7500000D6534C /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.29.1;
-			};
-		};
-		38MLX0012EB7500000D6534D /* XCRemoteSwiftPackageReference "mlx-swift-examples" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift-examples.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.17.2;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -697,26 +671,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 385BE4352EB7427E00D6534C /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
-		};
-		38MLX0012EB7500000D6534C /* MLX */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 38MLX0002EB7500000D6534C /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLX;
-		};
-		38MLX0022EB7500000D6534C /* MLXLLM */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 38MLX0012EB7500000D6534D /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
-			productName = MLXLLM;
-		};
-		38MLX0032EB7500000D6534C /* MLXLMCommon */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 38MLX0012EB7500000D6534D /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
-			productName = MLXLMCommon;
-		};
-		38MLX0042EB7500000D6534C /* MLXNN */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 38MLX0002EB7500000D6534C /* XCRemoteSwiftPackageReference "mlx-swift" */;
-			productName = MLXNN;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
