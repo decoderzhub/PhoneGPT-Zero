@@ -46,17 +46,25 @@ struct SidebarView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(sessions, id: \.id) { session in
-                        SessionRow(
-                            session: session,
-                            isSelected: selectedSession?.id == session.id
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedSession = session
-                        }
-                        .onLongPressGesture {
-                            sessionToDelete = session
-                            showingDeleteConfirmation = true
+                        HStack(spacing: 0) {
+                            SessionRow(
+                                session: session,
+                                isSelected: selectedSession?.id == session.id
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedSession = session
+                            }
+
+                            Button(action: {
+                                sessionToDelete = session
+                                showingDeleteConfirmation = true
+                            }) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 40, height: 40)
+                            }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
