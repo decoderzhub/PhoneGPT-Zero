@@ -16,7 +16,7 @@ struct LMModel {
     /// MLX framework configuration
     let configuration: ModelConfiguration
 
-    /// Model type: LLM or VLM
+    /// Model type: LLM only for now
     let type: ModelType
 
     /// Parameter count for reference
@@ -26,8 +26,6 @@ struct LMModel {
     enum ModelType {
         /// Large Language Model (text-only)
         case llm
-        /// Vision-Language Model (images + text)
-        case vlm
     }
 
     init(
@@ -60,23 +58,14 @@ extension LMModel: Identifiable, Hashable {
 // MARK: - Display Helpers
 
 extension LMModel {
-    /// Display name with model type suffix
+    /// Display name
     var displayName: String {
-        if isVisionModel {
-            "\(name) (Vision)"
-        } else {
-            name
-        }
+        name
     }
 
     /// Whether this is a language model
     var isLanguageModel: Bool {
         type == .llm
-    }
-
-    /// Whether this is a vision-language model
-    var isVisionModel: Bool {
-        type == .vlm
     }
 
     /// Parameter count display (e.g., "1.5B", "3.8B")

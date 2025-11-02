@@ -18,12 +18,6 @@ struct Message: Identifiable, Codable {
     /// Message content
     var content: String
 
-    /// Attached images (for vision models)
-    let images: [URL]
-
-    /// Attached videos (for vision models)
-    let videos: [URL]
-
     /// When the message was created
     let timestamp: Date
 
@@ -39,14 +33,10 @@ struct Message: Identifiable, Codable {
     init(
         role: Role,
         content: String,
-        images: [URL] = [],
-        videos: [URL] = [],
         timestamp: Date = Date()
     ) {
         self.role = role
         self.content = content
-        self.images = images
-        self.videos = videos
         self.timestamp = timestamp
     }
 

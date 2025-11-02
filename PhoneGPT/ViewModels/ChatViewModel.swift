@@ -40,7 +40,10 @@ class ChatViewModel {
     var errorMessage: String?
 
     /// Task for current generation (used for cancellation)
-    private var generateTask: Task<Void, any Error>?
+    private var generateTask: Task<Void, Never>?
+
+    /// Generation completion info (metrics)
+    var generateCompletionInfo: GenerateCompletionInfo?
 
     // MARK: - Metrics
 
@@ -51,7 +54,7 @@ class ChatViewModel {
 
     /// Tokens generated per second
     var tokensPerSecond: Double {
-        mlxService.tokensPerSecond
+        generateCompletionInfo?.tokensPerSecond ?? 0
     }
 
     /// Whether currently downloading model
@@ -60,8 +63,14 @@ class ChatViewModel {
     }
 
     // MARK: - Initializer
+    
+    // Default initializer that creates MLXService on MainActor
+    init() {
+        self.mlxService = MLXService()
+    }
 
-    init(mlxService: MLXService = MLXService()) {
+    // Initializer for dependency injection (for testing)
+    init(mlxService: MLXService) {
         self.mlxService = mlxService
     }
 
@@ -69,10 +78,8 @@ class ChatViewModel {
 
     /// Send message and generate response
     func send() async {
-        if let existingTask = generateTask {
-            existingTask.cancel()
-            generateTask = nil
-        }
+        // Cancel any existing generation
+        generateTask?.cancel()
 
         guard !prompt.isEmpty else { return }
 
@@ -92,69 +99,51 @@ class ChatViewModel {
 
         generateTask = Task {
             do {
-                let stream = try await mlxService.generate(
-                    messages: messages,
-                    model: selectedModel
-                )
-
-                print("📥 Receiving response...")
-
-                for try await generation in stream {
+                // Process generation chunks and update UI
+                for try await generation in try await mlxService.generate(
+                    messages: messages, model: selectedModel)
+                {
+                    if Task.isCancelled {
+                        break
+                    }
+                    
                     switch generation {
                     case .chunk(let chunk):
-                        if var lastMessage = messages.last, lastMessage.role == .assistant {
-                            lastMessage.content += chunk
-                            messages[messages.count - 1] = lastMessage
+                        // Append new text to the current assistant message
+                        if messages.count > 0 && messages[messages.count - 1].role == .assistant {
+                            messages[messages.count - 1].content += chunk
                         }
-
+                        
                     case .info(let info):
+                        // Update performance metrics
+                        generateCompletionInfo = info
                         print("📊 Metrics: \(info.tokensPerSecond) tok/s")
-
-                    case .toolCall:
+                        
+                    case .toolCall(let call):
+                        // Tool calls not implemented yet
+                        print("🔧 Tool call: \(call)")
                         break
                     }
                 }
 
                 print("✅ Generation complete")
 
-            } catch is CancellationError {
-                print("❌ Generation cancelled")
-                if var lastMessage = messages.last, lastMessage.role == .assistant {
-                    if !lastMessage.content.isEmpty {
-                        lastMessage.content += "\n[Cancelled]"
-                    } else {
-                        lastMessage.content = "[Cancelled]"
-                    }
-                    messages[messages.count - 1] = lastMessage
-                }
-
             } catch {
                 print("❌ Generation error: \(error)")
                 errorMessage = error.localizedDescription
 
-                if var lastMessage = messages.last, lastMessage.role == .assistant {
-                    lastMessage.content = "[Error: \(error.localizedDescription)]"
-                    messages[messages.count - 1] = lastMessage
+                // Mark message as error
+                if messages.count > 0 && messages[messages.count - 1].role == .assistant {
+                    if messages[messages.count - 1].content.isEmpty {
+                        messages[messages.count - 1].content = "[Error: \(error.localizedDescription)]"
+                    }
                 }
             }
+            
+            isGenerating = false
         }
 
-        do {
-            try await withTaskCancellationHandler {
-                try await generateTask?.value
-            } onCancel: {
-                Task { @MainActor in
-                    generateTask?.cancel()
-                }
-            }
-        } catch is CancellationError {
-            break
-        } catch {
-            break
-        }
-
-        isGenerating = false
-        generateTask = nil
+        await generateTask?.value
     }
 
     /// Clear conversation and start fresh
@@ -165,6 +154,7 @@ class ChatViewModel {
         prompt = ""
         generateTask?.cancel()
         errorMessage = nil
+        generateCompletionInfo = nil
     }
 
     /// Remove message at index

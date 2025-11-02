@@ -12,14 +12,18 @@ import MLXLMCommon
 import Hub
 
 // MARK: - HubApi Extension
-
+// Add default HubApi instance for convenience (from MLXChatExample)
 extension HubApi {
+    #if os(iOS)
     static let `default` = HubApi(
         downloadBase: URL.cachesDirectory.appending(path: "huggingface")
     )
+    #else
+    static let `default` = HubApi(
+        downloadBase: URL.downloadsDirectory.appending(path: "huggingface")
+    )
+    #endif
 }
-
-// MARK: - MLXService
 
 /// Service for loading and running language models via MLX
 /// Handles model caching, download progress, and text generation
@@ -28,23 +32,23 @@ extension HubApi {
 class MLXService {
     // MARK: - Available Models
 
-    /// List of all supported models (LLM + VLM)
+    /// List of all supported models (LLM only for now)
     static let availableModels: [LMModel] = [
         LMModel(
             name: "Qwen 2.5 (1.5B)",
-            configuration: LLMRegistry.qwen2_5_1_5b,
+            configuration: ModelConfiguration(id: "mlx-community/Qwen2.5-1.5B-Instruct-4bit"),
             type: .llm,
             parameters: "1.5B"
         ),
         LMModel(
             name: "SmolLM (135M)",
-            configuration: LLMRegistry.smolLM_135M_4bit,
+            configuration: ModelConfiguration(id: "mlx-community/SmolLM-135M-Instruct-4bit"),
             type: .llm,
             parameters: "135M"
         ),
         LMModel(
             name: "Llama 3.2 (1B)",
-            configuration: LLMRegistry.llama3_2_1B_4bit,
+            configuration: ModelConfiguration(id: "mlx-community/Llama-3.2-1B-Instruct-4bit"),
             type: .llm,
             parameters: "1B"
         ),
@@ -93,8 +97,11 @@ class MLXService {
 
         print("📥 Loading \(model.name) from Hugging Face Hub...")
 
-        let container = try await LLMModelFactory.shared.loadContainer(
-            hub: .default,
+        // For now, only support LLM models
+        let factory = LLMModelFactory.shared
+
+        let container = try await factory.loadContainer(
+            hub: HubApi.default,  // Use our extension
             configuration: model.configuration
         ) { progress in
             Task { @MainActor in
@@ -128,6 +135,7 @@ class MLXService {
 
         print("📝 Preparing input (\(messages.count) messages)...")
 
+        // Convert our Message type to Chat.Message
         let chatMessages = messages.map { message in
             let role: Chat.Message.Role = switch message.role {
             case .assistant:
@@ -138,22 +146,16 @@ class MLXService {
                 .system
             }
 
-            let images: [UserInput.Image] = message.images.map { .url($0) }
-
             return Chat.Message(
                 role: role,
                 content: message.content,
-                images: images,
-                videos: []
+                images: [],  // No image support for now
+                videos: []   // No video support for now
             )
         }
 
-        let userInput = UserInput(
-            chat: chatMessages,
-            processing: .init(
-                resize: .init(width: 1024, height: 1024)
-            )
-        )
+        // Create UserInput with chat messages
+        let userInput = UserInput(prompt: .chat(chatMessages))
 
         return try await container.perform { context in
             print("⚙️ Processing input...")
@@ -187,3 +189,4 @@ class MLXService {
         0
     }
 }
+
