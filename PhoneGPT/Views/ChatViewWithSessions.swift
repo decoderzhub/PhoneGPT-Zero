@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ChatViewWithSessions: View {
-    @EnvironmentObject var modelManager: ModelManager
+    @EnvironmentObject var modelManager: MLXModelManager
     @StateObject private var dataManager = PersonalDataManager()
     @StateObject private var sessionManager = ChatSessionManager()
 
@@ -186,7 +186,7 @@ struct SessionRow: View {
 }
 
 struct MainChatView: View {
-    @ObservedObject var modelManager: ModelManager
+    @ObservedObject var modelManager: MLXModelManager
     @ObservedObject var dataManager: PersonalDataManager
     @ObservedObject var sessionManager: ChatSessionManager
 

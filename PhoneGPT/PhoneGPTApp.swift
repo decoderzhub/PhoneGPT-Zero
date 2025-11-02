@@ -4,7 +4,7 @@ import CoreData
 @main
 struct PhoneGPTApp: App {
     let persistenceController = PersistenceController.shared
-    @StateObject private var modelManager = ModelManager.shared
+    @StateObject private var modelManager = MLXModelManager.shared
 
     var body: some Scene {
         WindowGroup {

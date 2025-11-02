@@ -1,10 +1,10 @@
 // MARK: - Fixed ChatView.swift for PhoneGPT-Zero
-// ✅ Compatible with updated PersonalDataManager & ModelManager
+// ✅ Compatible with updated PersonalDataManager & MLXModelManager
 
 import SwiftUI
 
 struct ChatView: View {
-    @EnvironmentObject var modelManager: ModelManager
+    @EnvironmentObject var modelManager: MLXModelManager
     @StateObject private var dataManager = PersonalDataManager()
     @State private var prompt = ""
     @State private var messages: [ChatMessage] = []
