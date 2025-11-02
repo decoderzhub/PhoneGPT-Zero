@@ -43,10 +43,11 @@ class DocumentService: ObservableObject {
 
             for (index, chunk) in chunks.enumerated() {
                 if let vector = embedding?.vector(for: chunk) {
+                    let floatVector = vector.map { Float($0) }
                     _ = databaseService.addEmbedding(
                         to: document,
                         chunkText: chunk,
-                        embedding: vector,
+                        embedding: floatVector,
                         chunkIndex: index
                     )
                 }
@@ -77,6 +78,8 @@ class DocumentService: ObservableObject {
                 return []
             }
 
+            let floatQueryVector = queryVector.map { Float($0) }
+
             for document in documents {
                 let embeddings = databaseService.fetchEmbeddings(for: document)
 
@@ -84,7 +87,7 @@ class DocumentService: ObservableObject {
                     guard let storedVector = embeddingEntity.embedding as? [Float],
                           let chunkText = embeddingEntity.chunkText else { continue }
 
-                    let similarity = cosineSimilarity(queryVector, storedVector)
+                    let similarity = cosineSimilarity(floatQueryVector, storedVector)
                     allChunks.append((chunkText, similarity))
                 }
             }
