@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 import NaturalLanguage
 import PDFKit
 import CoreGraphics
+import ZIPFoundation
 
 class PersonalDataManager: NSObject, ObservableObject {
     @Published var indexedDocuments: Int = 0
@@ -143,8 +144,43 @@ class PersonalDataManager: NSObject, ObservableObject {
     }
 
     private func extractTextFromDOCXManually(data: Data) -> String? {
-        print("⚠️ DOCX extraction unavailable - iOS doesn't support native ZIP extraction")
-        print("   Suggestion: Convert DOCX to PDF or TXT for better compatibility")
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("zip")
+
+        let unzipDestination = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+
+        do {
+            try data.write(to: tempURL)
+
+            try FileManager.default.createDirectory(at: unzipDestination, withIntermediateDirectories: true)
+
+            try FileManager.default.unzipItem(at: tempURL, to: unzipDestination)
+
+            let documentXMLPath = unzipDestination.appendingPathComponent("word/document.xml")
+
+            if let xmlString = try? String(contentsOf: documentXMLPath, encoding: .utf8) {
+                let extractedText = parseTextFromDocumentXML(xmlString)
+
+                try? FileManager.default.removeItem(at: tempURL)
+                try? FileManager.default.removeItem(at: unzipDestination)
+
+                if !extractedText.isEmpty {
+                    print("✅ Extracted text from DOCX using ZIPFoundation")
+                    return extractedText
+                }
+            }
+
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: unzipDestination)
+
+        } catch {
+            print("❌ Error extracting DOCX: \(error)")
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: unzipDestination)
+        }
+
         return nil
     }
 
