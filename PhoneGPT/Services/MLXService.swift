@@ -11,6 +11,16 @@ import MLXLLM
 import MLXLMCommon
 import Hub
 
+// MARK: - HubApi Extension
+
+extension HubApi {
+    static let `default` = HubApi(
+        downloadBase: URL.cachesDirectory.appending(path: "huggingface")
+    )
+}
+
+// MARK: - MLXService
+
 /// Service for loading and running language models via MLX
 /// Handles model caching, download progress, and text generation
 @Observable
@@ -84,7 +94,7 @@ class MLXService {
         print("📥 Loading \(model.name) from Hugging Face Hub...")
 
         let container = try await LLMModelFactory.shared.loadContainer(
-            hub: HubApi(),
+            hub: .default,
             configuration: model.configuration
         ) { progress in
             Task { @MainActor in

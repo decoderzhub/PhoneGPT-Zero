@@ -101,16 +101,16 @@ class ChatViewModel {
 
                 for try await generation in stream {
                     switch generation {
-                    case .token(let token):
+                    case .chunk(let chunk):
                         if var lastMessage = messages.last, lastMessage.role == .assistant {
-                            lastMessage.content += token
+                            lastMessage.content += chunk
                             messages[messages.count - 1] = lastMessage
                         }
 
-                    case .complete(let info):
+                    case .info(let info):
                         print("📊 Metrics: \(info.tokensPerSecond) tok/s")
 
-                    case .data:
+                    case .toolCall:
                         break
                     }
                 }
