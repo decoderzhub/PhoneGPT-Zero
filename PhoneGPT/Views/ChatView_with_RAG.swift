@@ -10,8 +10,10 @@ struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var usePersonalData = true
     @FocusState private var isInputFocused: Bool
-    
+
     var body: some View {
+        // Connect dataManager to modelManager for RAG pipeline
+        let _ = modelManager.dataManager = dataManager
         NavigationStack {
             VStack(spacing: 0) {
                 // Header
@@ -120,29 +122,19 @@ struct ChatView: View {
         isInputFocused = false
         
         Task {
-            var finalPrompt = currentPrompt
-            
-            // Add document context if enabled
+            // Use RAG pipeline if documents are available and enabled
+            let response: String
+
             if usePersonalData && dataManager.indexedDocuments > 0 {
-                let context = dataManager.buildContext(for: currentPrompt)
-                if !context.isEmpty {
-                    finalPrompt = """
-                    Context from documents:
-                    \(context)
-                    
-                    Question: \(currentPrompt)
-                    
-                    Please answer based on the context above if relevant, otherwise answer generally.
-                    """
-                    print("📝 Using document context for response")
-                }
+                print("🚀 Using full RAG pipeline")
+                response = await modelManager.generateRAGResponse(for: currentPrompt)
+            } else {
+                print("💬 Using simple response (no documents)")
+                response = await modelManager.generate(
+                    prompt: currentPrompt,
+                    maxTokens: 150
+                )
             }
-            
-            // Get response from model
-            let response = await modelManager.generate(
-                prompt: finalPrompt,
-                maxTokens: 150
-            )
             
             let assistantMessage = ChatMessage(
                 role: .assistant,

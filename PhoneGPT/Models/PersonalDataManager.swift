@@ -511,6 +511,103 @@ class PersonalDataManager: NSObject, ObservableObject {
         return context
     }
 
+    // MARK: - Context Fusion (RAG Step 3)
+
+    /// Fuses context from multiple documents with smart token limiting
+    /// This is the core of RAG - combines retrieval results into coherent context
+    func fuseContext(_ docs: [VectorDocument], for query: String, maxTokens: Int = 1000) -> String {
+        guard !docs.isEmpty else {
+            return ""
+        }
+
+        let queryLower = query.lowercased()
+        let queryWords = Set(queryLower.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 3 })
+
+        // Score and rank sentences
+        var scoredSentences: [(sentence: String, score: Float, source: String)] = []
+
+        for doc in docs {
+            let sentences = doc.content.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 15 }
+
+            for (idx, sentence) in sentences.enumerated() {
+                let sentenceLower = sentence.lowercased()
+                let sentenceWords = Set(sentenceLower.components(separatedBy: .whitespacesAndNewlines))
+
+                // Relevance score
+                let overlap = queryWords.intersection(sentenceWords)
+                var score = Float(overlap.count) / Float(max(queryWords.count, 1))
+
+                // Position bonus (earlier = more important)
+                if idx < 3 {
+                    score += 0.3
+                }
+
+                // Length penalty (too short or too long)
+                let wordCount = sentence.split(separator: " ").count
+                if wordCount < 5 || wordCount > 100 {
+                    score *= 0.5
+                }
+
+                scoredSentences.append((sentence, score, doc.source))
+            }
+        }
+
+        // Smart token limiting
+        var context = ""
+        var tokenCount = 0
+
+        let rankedSentences = scoredSentences
+            .sorted { $0.score > $1.score }
+            .filter { $0.score > 0.1 } // Minimum relevance threshold
+
+        for item in rankedSentences {
+            let sentenceTokens = item.sentence.split(separator: " ").count
+
+            // Stop if we exceed token limit
+            if tokenCount + sentenceTokens > maxTokens {
+                break
+            }
+
+            context += item.sentence + ". "
+            tokenCount += sentenceTokens
+        }
+
+        // Deduplicate and compress
+        let compressed = compressContext(context)
+
+        print("🧠 Context fusion complete:")
+        print("   Input docs: \(docs.count)")
+        print("   Sentences evaluated: \(scoredSentences.count)")
+        print("   Tokens used: \(tokenCount)/\(maxTokens)")
+        print("   Final length: \(compressed.count) chars")
+
+        return compressed
+    }
+
+    /// Compresses context by removing redundancy
+    private func compressContext(_ text: String) -> String {
+        // Remove duplicate sentences
+        let sentences = text.components(separatedBy: ". ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        var seen = Set<String>()
+        var unique: [String] = []
+
+        for sentence in sentences {
+            let normalized = sentence.lowercased()
+            if !seen.contains(normalized) {
+                seen.insert(normalized)
+                unique.append(sentence)
+            }
+        }
+
+        return unique.joined(separator: ". ")
+    }
+
     /// Summarizes documents naturally using extractive + reformulation techniques
     func summarizeDocuments(_ docs: [VectorDocument], for query: String) -> String {
         let queryLower = query.lowercased()
