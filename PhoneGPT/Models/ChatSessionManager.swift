@@ -63,14 +63,17 @@ class ChatSessionManager: ObservableObject {
     private let deviceId: String
 
     init() {
-        guard let supabaseURL = Bundle.main.object(forInfoDictionaryKey: "VITE_SUPABASE_URL") as? String,
-              let supabaseKey = Bundle.main.object(forInfoDictionaryKey: "VITE_SUPABASE_SUPABASE_ANON_KEY") as? String,
+        guard let supabaseURL = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+              let supabaseKey = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
               let url = URL(string: supabaseURL) else {
-            fatalError("Supabase configuration missing in Info.plist")
+            fatalError("Supabase configuration missing in Info.plist. Please add SUPABASE_URL and SUPABASE_ANON_KEY")
         }
 
         self.supabase = SupabaseClient(supabaseURL: url, supabaseKey: supabaseKey)
         self.deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+
+        print("📱 Device ID: \(deviceId)")
+        print("🔗 Supabase URL: \(supabaseURL)")
 
         Task {
             await loadSessions()
