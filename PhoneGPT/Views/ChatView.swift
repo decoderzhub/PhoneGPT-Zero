@@ -23,6 +23,7 @@ struct ChatView: View {
     @State private var downloadProgress: Double = 0.0
     @State private var downloadingModelName: String = ""
     @State private var hasModel = false
+    @State private var showScrollToBottom = false
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -114,67 +115,93 @@ struct ChatView: View {
 
     private var chatContent: some View {
         VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    if !hasModel && viewModel.messages.isEmpty {
-                        VStack(spacing: 20) {
-                            Spacer()
+            ZStack(alignment: .bottomTrailing) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        if !hasModel && viewModel.messages.isEmpty {
+                            VStack(spacing: 20) {
+                                Spacer()
 
-                            Image(systemName: "cpu.fill")
-                                .font(.system(size: 64))
-                                .foregroundColor(.blue)
+                                Image(systemName: "cpu.fill")
+                                    .font(.system(size: 64))
+                                    .foregroundColor(.blue)
 
-                            Text("No AI Model Installed")
-                                .font(.title2)
-                                .fontWeight(.bold)
+                                Text("No AI Model Installed")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
 
-                            Text("Download an AI model to start chatting with PhoneGPT")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
+                                Text("Download an AI model to start chatting with PhoneGPT")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
 
-                            Button(action: {
-                                Task {
-                                    await viewModel.send()
+                                Button(action: {
+                                    Task {
+                                        await viewModel.send()
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "arrow.down.circle.fill")
+                                        Text("Download Model")
+                                    }
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .background(Color.blue)
+                                    .cornerRadius(10)
                                 }
-                            }) {
-                                HStack {
-                                    Image(systemName: "arrow.down.circle.fill")
-                                    Text("Download Model")
-                                }
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(Color.blue)
-                                .cornerRadius(10)
+
+                                Spacer()
                             }
-
-                            Spacer()
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        LazyVStack(spacing: 16) {
-                            ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                                if message.role != .system {
-                                    MessageBubble(message: message)
-                                        .id(index)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            LazyVStack(spacing: 16) {
+                                ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                                    if message.role != .system {
+                                        MessageBubble(message: message)
+                                            .id(index)
+                                    }
                                 }
                             }
-                        }
-                        .padding()
-                    }
-                }
-                .onAppear {
-                    scrollProxy = proxy
-                }
-                .onChange(of: viewModel.messages.count) { _, _ in
-                    if let lastIndex = viewModel.messages.indices.last {
-                        withAnimation {
-                            proxy.scrollTo(lastIndex, anchor: .bottom)
+                            .padding()
                         }
                     }
+                    .onTapGesture {
+                        isInputFocused = false
+                    }
+                    .onAppear {
+                        scrollProxy = proxy
+                    }
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        if let lastIndex = viewModel.messages.indices.last {
+                            withAnimation {
+                                proxy.scrollTo(lastIndex, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+
+                if showScrollToBottom {
+                    Button(action: {
+                        if let lastIndex = viewModel.messages.indices.last {
+                            withAnimation {
+                                scrollProxy?.scrollTo(lastIndex, anchor: .bottom)
+                            }
+                        }
+                    }) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue)
+                            .background(
+                                Circle()
+                                    .fill(Color(UIColor.systemBackground))
+                                    .frame(width: 36, height: 36)
+                            )
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
                 }
             }
 

@@ -69,6 +69,27 @@ class ChatViewModel {
     func createNewSession() {
         let session = databaseService.createSession(title: "New Chat")
         loadSession(session)
+
+        let welcomeMessage = """
+        Welcome to **PhoneGPT**! 👋
+
+        I'm your personal AI assistant running entirely on your device. Here's what makes me special:
+
+        - **100% Private**: All processing happens locally on your iPhone
+        - **No Internet Required**: Chat offline after model download
+        - **Fast & Secure**: Your data never leaves your device
+
+        **What I can help with:**
+        - Answer questions and have conversations
+        - Help with writing and brainstorming
+        - Explain concepts and solve problems
+        - Work with documents you upload
+
+        Ask me anything to get started!
+        """
+
+        messages.append(Message.assistant(welcomeMessage))
+        _ = databaseService.addMessage(to: session, content: welcomeMessage, role: "assistant")
     }
 
     func send() async {
