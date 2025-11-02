@@ -166,7 +166,11 @@ class MLXService {
 
     /// Delete all downloaded model files from disk
     func deleteDownloadedModels() throws {
-        let hubDirectory = HubApi.default.downloadBase
+        #if os(iOS)
+        let hubDirectory = URL.cachesDirectory.appending(path: "huggingface")
+        #else
+        let hubDirectory = URL.downloadsDirectory.appending(path: "huggingface")
+        #endif
 
         guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
             print("📁 No models directory found")
@@ -180,7 +184,11 @@ class MLXService {
 
     /// Check if any models are downloaded
     func hasDownloadedModels() -> Bool {
-        let hubDirectory = HubApi.default.downloadBase
+        #if os(iOS)
+        let hubDirectory = URL.cachesDirectory.appending(path: "huggingface")
+        #else
+        let hubDirectory = URL.downloadsDirectory.appending(path: "huggingface")
+        #endif
 
         guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
             return false
@@ -196,19 +204,27 @@ class MLXService {
 
     /// Get approximate size of downloaded models
     func getModelStorageSize() -> String {
-        let hubDirectory = HubApi.default.downloadBase
+        #if os(iOS)
+        let hubDirectory = URL.cachesDirectory.appending(path: "huggingface")
+        #else
+        let hubDirectory = URL.downloadsDirectory.appending(path: "huggingface")
+        #endif
 
         guard FileManager.default.fileExists(atPath: hubDirectory.path) else {
             return "0 MB"
         }
 
         do {
-            let contents = try FileManager.default.contentsOfDirectory(at: hubDirectory, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles])
+            let contents = try FileManager.default.contentsOfDirectory(at: hubDirectory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
 
             var totalSize: Int64 = 0
             for url in contents {
-                let resourceValues = try url.resourceValues(forKeys: [.totalFileSizeKey, .fileSizeKey])
-                totalSize += Int64(resourceValues.totalFileSize ?? resourceValues.fileSize ?? 0)
+                if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                   let fileSize = attributes[.size] as? Int64 {
+                    totalSize += fileSize
+                } else {
+                    totalSize += calculateDirectorySize(url: url)
+                }
             }
 
             let formatter = ByteCountFormatter()
@@ -217,6 +233,24 @@ class MLXService {
         } catch {
             return "Unknown"
         }
+    }
+
+    /// Recursively calculate directory size
+    private func calculateDirectorySize(url: URL) -> Int64 {
+        var totalSize: Int64 = 0
+
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) else {
+            return 0
+        }
+
+        for case let fileURL as URL in enumerator {
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
+               let fileSize = attributes[.size] as? Int64 {
+                totalSize += fileSize
+            }
+        }
+
+        return totalSize
     }
 }
 

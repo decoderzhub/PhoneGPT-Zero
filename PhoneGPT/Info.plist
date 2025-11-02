@@ -54,6 +54,8 @@
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
+    <key>UISupportsDocumentBrowser</key>
+    <true/>
 
     <!-- Permissions (prepare for device sensors) -->
     <key>NSCameraUsageDescription</key>
@@ -62,6 +64,10 @@
     <string>PhoneGPT uses the microphone for voice commands.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>PhoneGPT needs access to your photo library for file uploads.</string>
+
+    <!-- Local storage access -->
+    <key>NSFileProviderDomainUsageDescription</key>
+    <string>PhoneGPT stores downloaded AI models locally on your device.</string>
 
     <!-- Network access -->
     <key>NSAppTransportSecurity</key>
