@@ -9,8 +9,8 @@ import Foundation
 
 /// Unified message model compatible with MLXLMCommon
 struct Message: Identifiable, Codable {
-    /// Unique identifier
-    let id: String = UUID().uuidString
+    /// Unique identifier - Generated per instance
+    let id: String
 
     /// Message role (system, user, assistant)
     let role: Role
@@ -31,10 +31,12 @@ struct Message: Identifiable, Codable {
     // MARK: - Initializers
 
     init(
+        id: String = UUID().uuidString,
         role: Role,
         content: String,
         timestamp: Date = Date()
     ) {
+        self.id = id
         self.role = role
         self.content = content
         self.timestamp = timestamp

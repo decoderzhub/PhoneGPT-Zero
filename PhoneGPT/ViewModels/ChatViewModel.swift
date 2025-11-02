@@ -77,7 +77,12 @@ class ChatViewModel {
 
         self.messages = savedMessages.map { msg in
             let role: Message.Role = msg.role == "user" ? .user : (msg.role == "assistant" ? .assistant : .system)
-            return Message(role: role, content: msg.content ?? "")
+            // Use database message ID for consistency
+            return Message(
+                id: msg.id?.uuidString ?? UUID().uuidString,
+                role: role,
+                content: msg.content ?? ""
+            )
         }
 
         // Ensure system message exists
@@ -88,6 +93,9 @@ class ChatViewModel {
         }
 
         print("   Loaded \(messages.count) messages into UI")
+        messages.forEach { msg in
+            print("      - \(msg.role): ID=\(msg.id.prefix(8))... content=\(msg.content.prefix(30))...")
+        }
     }
 
     func createNewSession() {
@@ -139,6 +147,7 @@ class ChatViewModel {
 
         let userMessage = Message.user(userPrompt)
         messages.append(userMessage)
+        print("   User message ID: \(userMessage.id)")
         _ = databaseService.addMessage(to: session, content: userPrompt, role: "user")
 
         var relevantContext = ""
@@ -165,6 +174,7 @@ class ChatViewModel {
 
         let assistantMessage = Message.assistant("")
         messages.append(assistantMessage)
+        print("   Assistant message ID: \(assistantMessage.id)")
 
         generateTask = Task {
             do {
@@ -181,9 +191,16 @@ class ChatViewModel {
                     switch generation {
                     case .chunk(let chunk):
                         fullResponse += chunk
-                        if var lastMessage = messages.last, lastMessage.role == .assistant {
-                            lastMessage.content = fullResponse
-                            messages[messages.count - 1] = lastMessage
+                        // Update the last message if it's an assistant message
+                        if let lastIndex = messages.indices.last,
+                           messages[lastIndex].role == .assistant {
+                            // Keep the same ID but update content
+                            let messageId = messages[lastIndex].id
+                            messages[lastIndex] = Message(
+                                id: messageId,
+                                role: .assistant,
+                                content: fullResponse
+                            )
                         }
 
                     case .info(let info):
@@ -227,16 +244,28 @@ class ChatViewModel {
 
             } catch is CancellationError {
                 print("⚠️ Generation cancelled")
-                if var lastMessage = messages.last, lastMessage.role == .assistant {
-                    lastMessage.content = lastMessage.content.isEmpty ? "[Cancelled]" : lastMessage.content + "\n[Cancelled]"
-                    messages[messages.count - 1] = lastMessage
+                if let lastIndex = messages.indices.last,
+                   messages[lastIndex].role == .assistant {
+                    let messageId = messages[lastIndex].id
+                    let currentContent = messages[lastIndex].content
+                    let newContent = currentContent.isEmpty ? "[Cancelled]" : currentContent + "\n[Cancelled]"
+                    messages[lastIndex] = Message(
+                        id: messageId,
+                        role: .assistant,
+                        content: newContent
+                    )
                 }
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ Error: \(error.localizedDescription)")
-                if var lastMessage = messages.last, lastMessage.role == .assistant {
-                    lastMessage.content = "[Error: \(error.localizedDescription)]"
-                    messages[messages.count - 1] = lastMessage
+                if let lastIndex = messages.indices.last,
+                   messages[lastIndex].role == .assistant {
+                    let messageId = messages[lastIndex].id
+                    messages[lastIndex] = Message(
+                        id: messageId,
+                        role: .assistant,
+                        content: "[Error: \(error.localizedDescription)]"
+                    )
                 }
             }
 

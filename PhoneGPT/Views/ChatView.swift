@@ -184,11 +184,9 @@ struct ChatView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             LazyVStack(spacing: 16) {
-                                ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                                    if message.role != .system {
-                                        MessageBubble(message: message)
-                                            .id(index)
-                                    }
+                                ForEach(viewModel.messages.filter { $0.role != .system }) { message in
+                                    MessageBubble(message: message)
+                                        .id(message.id)
                                 }
                             }
                             .padding()
@@ -201,9 +199,9 @@ struct ChatView: View {
                         scrollProxy = proxy
                     }
                     .onChange(of: viewModel.messages.count) { _, _ in
-                        if let lastIndex = viewModel.messages.indices.last {
+                        if let lastMessage = viewModel.messages.last {
                             withAnimation {
-                                proxy.scrollTo(lastIndex, anchor: .bottom)
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }
@@ -211,9 +209,9 @@ struct ChatView: View {
 
                 if showScrollToBottom {
                     Button(action: {
-                        if let lastIndex = viewModel.messages.indices.last {
+                        if let lastMessage = viewModel.messages.last {
                             withAnimation {
-                                scrollProxy?.scrollTo(lastIndex, anchor: .bottom)
+                                scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }) {
