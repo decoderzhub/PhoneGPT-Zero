@@ -117,47 +117,113 @@ class PersonalDataManager: NSObject, ObservableObject {
         return fullText.isEmpty ? nil : fullText
     }
     
-    // MARK: - DOCX Text Extraction (Fallback Method)
+    // MARK: - DOCX Text Extraction
 
     private func extractTextFromDOCX(at url: URL) -> String? {
-        // Use fallback extraction (ZIPFoundation removed for simplicity)
-        return extractTextFromDOCXFallback(at: url)
-    }
-    
-    // Fallback DOCX extraction
-    private func extractTextFromDOCXFallback(at url: URL) -> String? {
-        // Try to read any readable text from the file
-        if let data = try? Data(contentsOf: url) {
-            var extractedText = ""
-            let bytes = [UInt8](data)
-            var currentWord = ""
-            
-            for byte in bytes {
-                if (byte >= 32 && byte <= 126) || byte == 10 || byte == 13 {
-                    if let char = String(bytes: [byte], encoding: .ascii) {
-                        currentWord += char
-                    }
-                } else {
-                    if currentWord.count > 3 && !currentWord.contains("xml") && !currentWord.contains("\\") {
-                        extractedText += currentWord + " "
-                    }
-                    currentWord = ""
-                }
-            }
-            
-            // Clean up
-            let cleanedText = extractedText
-                .components(separatedBy: .whitespacesAndNewlines)
-                .filter { $0.count > 2 }
-                .joined(separator: " ")
-            
-            if !cleanedText.isEmpty {
-                print("⚠️ Used fallback extraction: \(cleanedText.prefix(100))...")
-                return cleanedText
+        guard let data = try? Data(contentsOf: url) else {
+            print("❌ Could not read DOCX file")
+            return nil
+        }
+
+        // Try NSAttributedString first (works for some DOCX files)
+        if let attributedString = try? NSAttributedString(
+            data: data,
+            options: [.documentType: NSAttributedString.DocumentType.docx],
+            documentAttributes: nil
+        ) {
+            let text = attributedString.string
+            if !text.isEmpty && !text.contains("�") {
+                print("✅ Extracted text using NSAttributedString")
+                return text
             }
         }
-        
+
+        // Fallback: Manual ZIP extraction
+        return extractTextFromDOCXManually(data: data)
+    }
+
+    private func extractTextFromDOCXManually(data: Data) -> String? {
+        // DOCX is a ZIP archive containing XML files
+        // We need to extract word/document.xml
+
+        // Create a temporary file
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("zip")
+
+        do {
+            try data.write(to: tempURL)
+
+            // Try to unzip and extract document.xml
+            let unzipDestination = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+
+            // Use the unzip command
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+            process.arguments = ["-q", "-o", tempURL.path, "-d", unzipDestination.path]
+
+            try process.run()
+            process.waitUntilExit()
+
+            // Read document.xml
+            let documentXMLPath = unzipDestination.appendingPathComponent("word/document.xml")
+
+            if let xmlString = try? String(contentsOf: documentXMLPath, encoding: .utf8) {
+                let extractedText = parseTextFromDocumentXML(xmlString)
+
+                // Cleanup
+                try? FileManager.default.removeItem(at: tempURL)
+                try? FileManager.default.removeItem(at: unzipDestination)
+
+                if !extractedText.isEmpty {
+                    print("✅ Extracted text from DOCX manually")
+                    return extractedText
+                }
+            }
+
+            // Cleanup
+            try? FileManager.default.removeItem(at: tempURL)
+            try? FileManager.default.removeItem(at: unzipDestination)
+
+        } catch {
+            print("❌ Error extracting DOCX: \(error)")
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+
         return nil
+    }
+
+    private func parseTextFromDocumentXML(_ xml: String) -> String {
+        // Extract text from <w:t> tags
+        var text = ""
+        var insideTextTag = false
+        var currentText = ""
+
+        let scanner = Scanner(string: xml)
+
+        while !scanner.isAtEnd {
+            if scanner.scanUpToString("<w:t") != nil {
+                if scanner.scanString("<w:t") != nil {
+                    // Skip attributes
+                    _ = scanner.scanUpToString(">")
+                    _ = scanner.scanString(">")
+
+                    // Get text content
+                    if let content = scanner.scanUpToString("</w:t>") {
+                        text += content
+                    }
+                    _ = scanner.scanString("</w:t>")
+                }
+            }
+        }
+
+        // Clean up the text
+        let cleanedText = text
+            .replacingOccurrences(of: "\n+", with: "\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return cleanedText
     }
     
     // MARK: - Process Any Document Type
