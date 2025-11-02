@@ -19,6 +19,7 @@ struct ChatView: View {
     @State private var showingDocumentPicker = false
     @State private var scrollProxy: ScrollViewProxy?
     @FocusState private var isInputFocused: Bool
+    @State private var mlxService: MLXService?
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -99,9 +100,25 @@ struct ChatView: View {
             }
             .onAppear {
                 loadSessions()
+                mlxService = viewModel.getMLXService()
                 if viewModel.currentSession == nil {
                     viewModel.createNewSession()
                     loadSessions()
+                }
+            }
+            .alert("Downloading Model", isPresented: Binding(
+                get: { mlxService?.isDownloading ?? false },
+                set: { _ in }
+            )) {
+                Button("OK") { }
+            } message: {
+                if let service = mlxService {
+                    VStack {
+                        Text("⚠️ Connecting to Internet")
+                            .font(.headline)
+                        Text("\nDownloading \(service.downloadingModelName)")
+                        Text("\nProgress: \(Int(service.downloadProgress * 100))%")
+                    }
                 }
             }
         }

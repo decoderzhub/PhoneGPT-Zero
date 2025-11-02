@@ -14,6 +14,9 @@ struct SidebarView: View {
     let onNewChat: () -> Void
     let onDeleteSession: (ChatSession) -> Void
 
+    @State private var sessionToDelete: ChatSession?
+    @State private var showingDeleteConfirmation = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -51,9 +54,14 @@ struct SidebarView: View {
                         .onTapGesture {
                             selectedSession = session
                         }
+                        .onLongPressGesture {
+                            sessionToDelete = session
+                            showingDeleteConfirmation = true
+                        }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                onDeleteSession(session)
+                                sessionToDelete = session
+                                showingDeleteConfirmation = true
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -66,6 +74,19 @@ struct SidebarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(UIColor.secondarySystemBackground))
+        .alert("Delete Chat?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                sessionToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let session = sessionToDelete {
+                    onDeleteSession(session)
+                }
+                sessionToDelete = nil
+            }
+        } message: {
+            Text("This will permanently delete this chat session and all its messages.")
+        }
     }
 }
 
