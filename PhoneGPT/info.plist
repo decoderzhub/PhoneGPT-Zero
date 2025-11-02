@@ -1,20 +1,97 @@
+
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Core iOS App Configuration -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+
 	<key>UIFileSharingEnabled</key>
 	<true/>
+
 	<key>UIRequiresFullScreen</key>
 	<true/>
+
 	<key>UIStatusBarHidden</key>
 	<true/>
+
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>SUPABASE_URL</key>
-	<string>https://xbhlxoctzwcgzgkixnls.supabase.co</string>
-	<key>SUPABASE_ANON_KEY</key>
-	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiaGx4b2N0endjZ3pna2l4bmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNDk0NzYsImV4cCI6MjA3NzYyNTQ3Nn0.6z6EvASX0QxTCToeUU1hKKvHq7E4a89Q1DmOowcVaZA</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleName</key>
+    <string>PhoneGPT</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- App Permissions & Behaviors -->
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+    <key>UIFileSharingEnabled</key>
+    <true/>
+
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+
+    <!-- App Transport Security (for network access to Supabase) -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+
+    <!-- Environment Variables -->
+    <key>SUPABASE_URL</key>
+    <string>https://xbhlxoctzwcgzgkixnls.supabase.co</string>
+
+    <key>SUPABASE_ANON_KEY</key>
+    <string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiaGx4b2N0endjZ3pna2l4bmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNDk0NzYsImV4cCI6MjA3NzYyNTQ3Nn0.6z6EvASX0QxTCToeUU1hKKvHq7E4a89Q1DmOowcVaZA</string>
 </dict>
 </plist>
