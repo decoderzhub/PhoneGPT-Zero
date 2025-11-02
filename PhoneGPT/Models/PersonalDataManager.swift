@@ -350,7 +350,7 @@ class PersonalDataManager: NSObject, ObservableObject {
            let vector = semanticEmbedder.vector(for: text) {
             // NLEmbedding returns normalized vectors already
             print("🧠 Using semantic embedding (dim: \(vector.count))")
-            return vector
+            return vector.map { Float($0) }
         }
 
         // Fallback to hash-based embeddings if NLEmbedding unavailable
