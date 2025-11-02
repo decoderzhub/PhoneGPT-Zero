@@ -7,35 +7,40 @@ struct PhoneGPTApp: App {
     @State private var settings = AppSettings()
     @State private var viewModel: ChatViewModel?
     @State private var databaseService = DatabaseService()
+    @State private var showingSplash = true
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if settings.modelDownloaded {
-                    if let viewModel = viewModel {
-                        ChatView(
-                            viewModel: viewModel,
-                            databaseService: databaseService,
-                            settings: settings
-                        )
-                    } else {
-                        ProgressView()
-                            .onAppear {
-                                Task { @MainActor in
-                                    viewModel = ChatViewModel(settings: settings)
-                                }
-                            }
-                    }
+            ZStack {
+                if showingSplash {
+                    SplashView()
+                        .transition(.opacity)
+                        .zIndex(1)
                 } else {
-                    WelcomeView {
-                        Task { @MainActor in
-                            settings.modelDownloaded = true
-                            viewModel = ChatViewModel(settings: settings)
+                    Group {
+                        if let viewModel = viewModel {
+                            ChatView(
+                                viewModel: viewModel,
+                                databaseService: databaseService,
+                                settings: settings
+                            )
+                        } else {
+                            ProgressView()
                         }
                     }
+                    .transition(.opacity)
                 }
             }
             .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            .onAppear {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    viewModel = ChatViewModel(settings: settings)
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        showingSplash = false
+                    }
+                }
+            }
         }
     }
 }

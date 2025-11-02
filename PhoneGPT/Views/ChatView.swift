@@ -22,6 +22,7 @@ struct ChatView: View {
     @State private var showingDownloadAlert = false
     @State private var downloadProgress: Double = 0.0
     @State private var downloadingModelName: String = ""
+    @State private var hasModel = false
 
     init(viewModel: ChatViewModel, databaseService: DatabaseService, settings: AppSettings) {
         self._viewModel = State(initialValue: viewModel)
@@ -108,16 +109,6 @@ struct ChatView: View {
                 }
                 startMonitoringDownloads()
             }
-            .alert("Downloading Model", isPresented: $showingDownloadAlert) {
-                EmptyView()
-            } message: {
-                VStack {
-                    Text("⚠️ Connecting to Internet")
-                        .font(.headline)
-                    Text("\nDownloading \(downloadingModelName)")
-                    Text("\nProgress: \(Int(downloadProgress * 100))%")
-                }
-            }
         }
     }
 
@@ -125,15 +116,55 @@ struct ChatView: View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
-                            if message.role != .system {
-                                MessageBubble(message: message)
-                                    .id(index)
+                    if !hasModel && viewModel.messages.isEmpty {
+                        VStack(spacing: 20) {
+                            Spacer()
+
+                            Image(systemName: "cpu.fill")
+                                .font(.system(size: 64))
+                                .foregroundColor(.blue)
+
+                            Text("No AI Model Installed")
+                                .font(.title2)
+                                .fontWeight(.bold)
+
+                            Text("Download an AI model to start chatting with PhoneGPT")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+
+                            Button(action: {
+                                Task {
+                                    await viewModel.send()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                    Text("Download Model")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                            }
+
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        LazyVStack(spacing: 16) {
+                            ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                                if message.role != .system {
+                                    MessageBubble(message: message)
+                                        .id(index)
+                                }
                             }
                         }
+                        .padding()
                     }
-                    .padding()
                 }
                 .onAppear {
                     scrollProxy = proxy
@@ -149,12 +180,43 @@ struct ChatView: View {
 
             Divider()
 
+            if showingDownloadAlert {
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("⚠️ Downloading Model: \(downloadingModelName)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(Int(downloadProgress * 100))%")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+
+                    ProgressView(value: downloadProgress)
+                        .progressViewStyle(LinearProgressViewStyle())
+                        .padding(.horizontal, 12)
+
+                    Text("Please wait while the AI model downloads. Internet connection required.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 8)
+                }
+                .background(Color(UIColor.secondarySystemBackground))
+            }
+
             HStack(spacing: 12) {
                 Button(action: { showingDocumentPicker = true }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 28))
                         .foregroundColor(.blue)
                 }
+                .disabled(showingDownloadAlert)
+                .opacity(showingDownloadAlert ? 0.5 : 1.0)
 
                 InputBar(
                     prompt: $viewModel.prompt,
@@ -166,6 +228,8 @@ struct ChatView: View {
                         }
                     }
                 )
+                .disabled(showingDownloadAlert)
+                .opacity(showingDownloadAlert ? 0.5 : 1.0)
             }
             .padding(.horizontal, 8)
         }
@@ -179,6 +243,8 @@ struct ChatView: View {
     private func startMonitoringDownloads() {
         Task {
             let mlxService = viewModel.getMLXService()
+            hasModel = mlxService.hasDownloadedModels()
+
             while true {
                 try? await Task.sleep(nanoseconds: 100_000_000)
 
@@ -188,6 +254,7 @@ struct ChatView: View {
                     downloadingModelName = mlxService.downloadingModelName
                 } else if showingDownloadAlert {
                     showingDownloadAlert = false
+                    hasModel = mlxService.hasDownloadedModels()
                 }
             }
         }
