@@ -35,21 +35,21 @@ struct WelcomeMessageView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 16) {
-                FeatureRow(
+                WelcomeFeatureRow(
                     icon: "lock.shield.fill",
                     title: "100% Private",
                     description: "All processing happens locally on your iPhone",
                     color: .green
                 )
 
-                FeatureRow(
+                WelcomeFeatureRow(
                     icon: "wifi.slash",
                     title: "No Internet Required",
                     description: "Chat offline after model download",
                     color: .orange
                 )
 
-                FeatureRow(
+                WelcomeFeatureRow(
                     icon: "bolt.fill",
                     title: "Fast & Secure",
                     description: "Your data never leaves your device",
@@ -65,10 +65,10 @@ struct WelcomeMessageView: View {
                     .fontWeight(.semibold)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    BulletPoint(text: "Answer questions and have conversations")
-                    BulletPoint(text: "Help with writing and brainstorming")
-                    BulletPoint(text: "Explain concepts and solve problems")
-                    BulletPoint(text: "Work with documents you upload")
+                    WelcomeBulletPoint(text: "Answer questions and have conversations")
+                    WelcomeBulletPoint(text: "Help with writing and brainstorming")
+                    WelcomeBulletPoint(text: "Explain concepts and solve problems")
+                    WelcomeBulletPoint(text: "Work with documents you upload")
                 }
             }
 
@@ -89,7 +89,7 @@ struct WelcomeMessageView: View {
     }
 }
 
-struct FeatureRow: View {
+private struct WelcomeFeatureRow: View {
     let icon: String
     let title: String
     let description: String
@@ -115,7 +115,7 @@ struct FeatureRow: View {
     }
 }
 
-struct BulletPoint: View {
+private struct WelcomeBulletPoint: View {
     let text: String
 
     var body: some View {
