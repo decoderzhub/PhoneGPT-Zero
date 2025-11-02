@@ -1,182 +1,136 @@
-// MARK: - Fixed ChatView.swift for PhoneGPT-Zero
-// ✅ Compatible with updated PersonalDataManager & MLXModelManager
+//
+//  ChatView.swift
+//  PhoneGPT
+//
+//  Created by Darin Manley on 11/2/25.
+//
 
 import SwiftUI
 
 struct ChatView: View {
-    @EnvironmentObject var modelManager: MLXModelManager
+    @State private var viewModel = ChatViewModel()
     @StateObject private var dataManager = PersonalDataManager()
-    @State private var prompt = ""
-    @State private var messages: [ChatMessage] = []
-    @State private var usePersonalData = true
+    @State private var usePersonalData = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        // Connect dataManager to modelManager for RAG pipeline
-        let _ = modelManager.dataManager = dataManager
         NavigationStack {
             VStack(spacing: 0) {
-                // Header
-                HeaderView()
-                    .environmentObject(modelManager)
-                
-                // Document Controls
-                VStack(spacing: 10) {
-                    // Toggle and status
-                    HStack {
-                        Toggle("Use My Documents", isOn: $usePersonalData)
-                            .toggleStyle(.switch)
-                        
-                        Spacer()
-                        
-                        if dataManager.isIndexing {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Text("\(dataManager.indexedDocuments) chunks indexed")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Action buttons
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            dataManager.pickDocuments()
-                        }) {
-                            Label("Import Files", systemImage: "doc.badge.plus")
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        
-                        Button(action: {
-                            dataManager.resetAll()
-                        }) {
-                            Label("Reset", systemImage: "arrow.clockwise")
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .tint(.orange)
-                    }
-                    .padding(.horizontal)
-                }
-                .padding(.vertical, 8)
-                .background(Color(UIColor.secondarySystemBackground))
-                
-                // Chat messages
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            // Welcome message
-                            if messages.isEmpty {
-                                WelcomeMessage()
-                                    .padding()
-                            }
-                            
-                            ForEach(messages) { message in
-                                MessageBubble(message: message)
-                                    .id(message.id)
-                            }
-                            
-                            if modelManager.isGenerating {
-                                GeneratingView(
-                                    progress: modelManager.generationProgress,
-                                    currentOutput: modelManager.currentOutput
-                                )
-                            }
-                        }
-                        .padding()
-                    }
-                    .onChange(of: messages.count) { _, _ in
-                        withAnimation {
-                            proxy.scrollTo(messages.last?.id, anchor: .bottom)
-                        }
-                    }
-                }
-                
-                // Input bar
-                InputBar(
-                    prompt: $prompt,
-                    isInputFocused: _isInputFocused,
-                    onSend: sendMessage
+                HeaderView(
+                    viewModel: viewModel,
+                    onModelChange: { }
                 )
-            }
-            .navigationBarHidden(true)
-        }
-    }
-    
-    private func sendMessage() {
-        guard !prompt.isEmpty else { return }
-        
-        let userMessage = ChatMessage(
-            role: .user,
-            content: prompt
-        )
-        messages.append(userMessage)
-        
-        let currentPrompt = prompt
-        prompt = ""
-        isInputFocused = false
-        
-        Task {
-            // Use RAG pipeline if documents are available and enabled
-            let response: String
 
-            if usePersonalData && dataManager.indexedDocuments > 0 {
-                print("🚀 Using full RAG pipeline")
-                response = await modelManager.generateRAGResponse(for: currentPrompt)
-            } else {
-                print("💬 Using simple response (no documents)")
-                response = await modelManager.generate(
-                    prompt: currentPrompt,
-                    maxTokens: 150
+                if let progress = viewModel.downloadProgress {
+                    DownloadProgressView(progress: progress)
+                }
+
+                DocumentControlsView(
+                    dataManager: dataManager,
+                    usePersonalData: $usePersonalData
+                )
+
+                ZStack {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 12) {
+                                if viewModel.messages.count <= 1 {
+                                    WelcomeMessageView()
+                                        .padding()
+                                }
+
+                                ForEach(viewModel.messages) { message in
+                                    if message.role != .system {
+                                        MessageBubble(message: message)
+                                            .id(message.id)
+                                    }
+                                }
+
+                                if viewModel.isGenerating {
+                                    GeneratingIndicator(
+                                        tokensPerSecond: viewModel.tokensPerSecond
+                                    )
+                                    .id("generating")
+                                }
+                            }
+                            .padding()
+                        }
+                        .onChange(of: viewModel.messages.count) { _, _ in
+                            withAnimation {
+                                proxy.scrollTo("generating", anchor: .bottom)
+                            }
+                        }
+                    }
+
+                    if let error = viewModel.errorMessage {
+                        VStack {
+                            Spacer()
+
+                            ErrorBannerView(message: error) {
+                                viewModel.errorMessage = nil
+                            }
+                            .padding()
+                        }
+                    }
+                }
+
+                InputBar(
+                    prompt: $viewModel.prompt,
+                    isInputFocused: _isInputFocused,
+                    isLoading: viewModel.isGenerating || viewModel.isDownloading,
+                    onSend: {
+                        Task {
+                            await viewModel.send()
+                        }
+                    }
                 )
             }
-            
-            let assistantMessage = ChatMessage(
-                role: .assistant,
-                content: response
-            )
-            
-            await MainActor.run {
-                messages.append(assistantMessage)
-            }
         }
+        .navigationBarHidden(true)
+        .preferredColorScheme(.dark)
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Header
 
 struct HeaderView: View {
-    @EnvironmentObject var modelManager: ModelManager
-    
+    let viewModel: ChatViewModel
+    let onModelChange: () -> Void
+
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("PhoneGPT-Zero")
                     .font(.title2)
                     .fontWeight(.bold)
-                
-                HStack(spacing: 4) {
+
+                HStack(spacing: 12) {
                     Circle()
-                        .fill(modelManager.isModelLoaded ? Color.green : Color.red)
+                        .fill(Color.green)
                         .frame(width: 8, height: 8)
-                    
-                    Text(modelManager.isModelLoaded ? "Neural Engine Active" : "Loading...")
+
+                    Text("Neural Engine")
                         .font(.caption)
                         .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    if viewModel.isGenerating {
+                        Text("\(Int(viewModel.tokensPerSecond)) tok/s")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
                 }
             }
-            
+
             Spacer()
-            
-            VStack(alignment: .trailing) {
-                Text("\(Int(modelManager.tokensPerSecond)) tok/s")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+
+            VStack(alignment: .trailing, spacing: 6) {
+                if viewModel.isDownloading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .frame(height: 20)
+                }
             }
         }
         .padding()
@@ -188,27 +142,127 @@ struct HeaderView: View {
     }
 }
 
-struct WelcomeMessage: View {
+// MARK: - Download Progress
+
+struct DownloadProgressView: View {
+    let progress: Progress
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Downloading model...")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Text("\(Int(progress.fractionCompleted * 100))%")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            ProgressView(value: progress.fractionCompleted)
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+    }
+}
+
+// MARK: - Document Controls
+
+struct DocumentControlsView: View {
+    let dataManager: PersonalDataManager
+    @Binding var usePersonalData: Bool
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Toggle("Use My Documents", isOn: $usePersonalData)
+                    .toggleStyle(.switch)
+
+                Spacer()
+
+                if dataManager.isIndexing {
+                    ProgressView()
+                        .scaleEffect(0.75)
+                } else {
+                    Text("\(dataManager.indexedDocuments) chunks")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button(action: { dataManager.pickDocuments() }) {
+                    Label("Import", systemImage: "doc.badge.plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Button(action: { dataManager.resetAll() }) {
+                    Label("Reset", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+    }
+}
+
+// MARK: - Welcome Message
+
+struct WelcomeMessageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Welcome to PhoneGPT! 👋")
                 .font(.headline)
-            
-            Text("I'm running entirely on your device using the Neural Engine. Your conversations and documents stay completely private.")
+
+            Text("I'm running on your device using the Neural Engine. Everything stays private and works offline.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            
+
+            Divider()
+                .padding(.vertical, 4)
+
             VStack(alignment: .leading, spacing: 8) {
-                Label("Tap 'Import Files' to add PDFs, Word docs, or text files", systemImage: "doc.text")
-                Label("Toggle 'Use My Documents' to search them", systemImage: "magnifyingglass")
-                Label("Everything works offline", systemImage: "lock.shield")
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+
+                    Text("No internet required")
+                        .font(.caption)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+
+                    Text("Your data stays on device")
+                        .font(.caption)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+
+                    Text("Instant responses")
+                        .font(.caption)
+                }
             }
-            .font(.caption)
-            .foregroundColor(.secondary)
-            
-            Text("Try asking me something!")
-                .font(.subheadline)
-                .padding(.top, 8)
+
+            Divider()
+                .padding(.vertical, 4)
+
+            Text("Just start typing or ask me anything!")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
@@ -216,42 +270,65 @@ struct WelcomeMessage: View {
     }
 }
 
-struct GeneratingView: View {
-    let progress: Float
-    let currentOutput: String
-    
+// MARK: - Generating Indicator
+
+struct GeneratingIndicator: View {
+    let tokensPerSecond: Double
+
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                ProgressView()
-                    .scaleEffect(0.7)
-                
-                Text("Generating...")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text("\(Int(progress * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            if !currentOutput.isEmpty {
-                Text(currentOutput)
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
+        HStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(0.8)
+
+            Text("Generating...")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            if tokensPerSecond > 0 {
+                Text("\(Int(tokensPerSecond)) tok/s")
+                    .font(.caption2)
+                    .foregroundColor(.blue)
             }
         }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(12)
     }
 }
 
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let role: Role
-    let content: String
-    
-    enum Role {
-        case user
-        case assistant
+// MARK: - Error Banner
+
+struct ErrorBannerView: View {
+    let message: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            HStack {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.red)
+
+                Text(message)
+                    .font(.caption)
+                    .lineLimit(3)
+
+                Spacer()
+
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding()
+        .background(Color(UIColor.systemRed).opacity(0.1))
+        .cornerRadius(8)
     }
+}
+
+#Preview {
+    ChatView()
 }
