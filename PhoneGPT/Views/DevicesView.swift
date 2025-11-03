@@ -81,6 +81,22 @@ struct DevicesView: View {
             .sheet(item: $selectedDevice) { device in
                 DeviceDetailView(device: device)
             }
+            .onAppear {
+                checkDeviceConnections()
+            }
+        }
+    }
+
+    private func checkDeviceConnections() {
+        for index in devices.indices {
+            if devices[index].type == .evenRealities {
+                if let url = URL(string: "mentraos://"),
+                   UIApplication.shared.canOpenURL(url) {
+                    devices[index].isConnected = true
+                } else {
+                    devices[index].isConnected = false
+                }
+            }
         }
     }
 
@@ -127,11 +143,15 @@ struct DeviceRow: View {
     }
 }
 
-struct ConnectedDevice: Identifiable {
+struct ConnectedDevice: Identifiable, Equatable {
     let id = UUID()
     var name: String
     var type: DeviceType
     var isConnected: Bool
+
+    static func == (lhs: ConnectedDevice, rhs: ConnectedDevice) -> Bool {
+        lhs.id == rhs.id
+    }
 
     var icon: String {
         switch type {

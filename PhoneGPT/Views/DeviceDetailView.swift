@@ -66,6 +66,20 @@ struct DeviceDetailView: View {
             } message: {
                 Text(connectionError ?? "Failed to connect to device")
             }
+            .onAppear {
+                checkDeviceConnection()
+            }
+        }
+    }
+
+    private func checkDeviceConnection() {
+        if device.type == .evenRealities {
+            if let url = URL(string: "mentraos://"),
+               UIApplication.shared.canOpenURL(url) {
+                device.isConnected = true
+            } else {
+                device.isConnected = false
+            }
         }
     }
 
