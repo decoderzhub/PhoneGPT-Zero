@@ -149,9 +149,9 @@ struct DeviceDetailView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     InstructionStep(number: 1, text: "Install MentraOS from the App Store")
-                    InstructionStep(number: 2, text: "Power on your Even Realities G1 glasses")
-                    InstructionStep(number: 3, text: "Tap 'Connect' to begin pairing")
-                    InstructionStep(number: 4, text: "Follow on-screen instructions to complete setup")
+                    InstructionStep(number: 2, text: "Open MentraOS and pair your Even Realities G1 glasses")
+                    InstructionStep(number: 3, text: "Return to PhoneGPT and tap 'Connect'")
+                    InstructionStep(number: 4, text: "PhoneGPT will verify your MentraOS connection")
                 }
             }
             .padding(20)
@@ -185,13 +185,21 @@ struct DeviceDetailView: View {
     private func connectDevice() {
         isConnecting = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        if let url = URL(string: "mentraos://"),
+           UIApplication.shared.canOpenURL(url) {
+            device.isConnected = true
             isConnecting = false
+            UIApplication.shared.open(url)
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                isConnecting = false
 
-            if let url = URL(string: "https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193") {
-                UIApplication.shared.open(url)
-            } else {
-                connectionError = "Unable to open App Store. Please search for 'Mentra' in the App Store."
+                if let url = URL(string: "https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193") {
+                    UIApplication.shared.open(url)
+                    connectionError = "Please install MentraOS from the App Store, then pair your Even Realities glasses within MentraOS before returning to PhoneGPT."
+                } else {
+                    connectionError = "Unable to open App Store. Please search for 'Mentra' in the App Store."
+                }
                 showingConnectionError = true
             }
         }

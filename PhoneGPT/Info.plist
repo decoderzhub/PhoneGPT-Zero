@@ -188,6 +188,12 @@
         <true/>
     </dict>
 
+    <!-- URL Schemes to Query -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>mentraos</string>
+    </array>
+
     <!-- Environment Variables -->
     <key>SUPABASE_URL</key>
     <string>https://xbhlxoctzwcgzgkixnls.supabase.co</string>
