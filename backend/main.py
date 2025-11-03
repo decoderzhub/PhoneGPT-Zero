@@ -12,8 +12,15 @@ from datetime import datetime
 import logging
 import asyncio
 from collections import deque
+import sys
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -82,6 +89,13 @@ async def mentraos_webhook(event: WebhookEvent, background_tasks: BackgroundTask
     - app_deactivated: User closed PhoneGPT
     - connection_status: Device connection changed
     """
+    print("\n" + "="*50)
+    print(f"📨 WEBHOOK RECEIVED")
+    print(f"   Type: {event.type}")
+    print(f"   Device: {event.device_id}")
+    print(f"   Timestamp: {datetime.utcnow().isoformat()}")
+    print("="*50 + "\n")
+
     logger.info(f"Received webhook: type={event.type}, device={event.device_id}")
 
     event_queue.append(event)
@@ -93,20 +107,32 @@ async def mentraos_webhook(event: WebhookEvent, background_tasks: BackgroundTask
             "last_activity": datetime.utcnow().isoformat(),
             "status": "active"
         }
+        print(f"🔵 NEW SESSION STARTED")
+        print(f"   Device ID: {device_id}")
+        print(f"   Active sessions: {len(active_sessions)}\n")
         logger.info(f"Session activated for device: {device_id}")
 
     elif event.type == "app_deactivated":
         device_id = event.device_id or "default"
         if device_id in active_sessions:
             del active_sessions[device_id]
+        print(f"🔴 SESSION ENDED")
+        print(f"   Device ID: {device_id}")
+        print(f"   Active sessions: {len(active_sessions)}\n")
         logger.info(f"Session deactivated for device: {device_id}")
 
     elif event.type == "voice_input":
         transcript = event.data.get("transcript", "")
+        print(f"🎤 VOICE INPUT RECEIVED")
+        print(f"   Transcript: \"{transcript}\"")
+        print(f"   Device: {event.device_id}\n")
         logger.info(f"Voice input received: '{transcript}'")
 
     elif event.type == "gesture":
         gesture_type = event.data.get("gesture_type", "unknown")
+        print(f"👆 GESTURE DETECTED")
+        print(f"   Type: {gesture_type}")
+        print(f"   Device: {event.device_id}\n")
         logger.info(f"Gesture received: {gesture_type}")
 
     return JSONResponse({
@@ -126,6 +152,9 @@ async def get_events(since: int = 0, limit: int = 100):
     """
     events_list = list(event_queue)
     new_events = events_list[since:since + limit]
+
+    if new_events:
+        print(f"📤 EVENTS POLLED: Returning {len(new_events)} new events (since index {since})")
 
     return EventsResponse(
         events=new_events,
@@ -199,6 +228,18 @@ async def get_stats():
 
 if __name__ == "__main__":
     import uvicorn
+
+    print("\n" + "="*50)
+    print("🚀 STARTING PHONEGPT MENTRAOS SERVER")
+    print("="*50)
+    print(f"   Port: 8000")
+    print(f"   Endpoints:")
+    print(f"   - POST /webhook (MentraOS posts here)")
+    print(f"   - GET /events (PhoneGPT polls here)")
+    print(f"   - GET /health")
+    print(f"   Timestamp: {datetime.utcnow().isoformat()}")
+    print("="*50 + "\n")
+
     uvicorn.run(
         app,
         host="0.0.0.0",

@@ -1,17 +1,14 @@
 version: '3.8'
 
 services:
-  phonegpt-mentraos:
+  phonegpt-webhook:
     build: .
-    container_name: phonegpt-mentraos
+    container_name: phonegpt-webhook
     ports:
-      - "3000:3000"  # MentraOS SDK port
-      - "3001:3001"  # API port for PhoneGPT app
+      - "8000:8000"
     restart: unless-stopped
-    env_file:
-      - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

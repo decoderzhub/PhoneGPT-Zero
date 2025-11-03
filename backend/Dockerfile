@@ -1,16 +1,12 @@
-FROM node:20-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN npm install
+COPY main.py .
 
-COPY src ./src
+EXPOSE 8000
 
-RUN npm run build
-
-EXPOSE 3000 3001
-
-CMD ["npm", "start"]
+CMD ["python", "main.py"]

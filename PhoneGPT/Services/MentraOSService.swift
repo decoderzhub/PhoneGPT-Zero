@@ -69,7 +69,7 @@ class MentraOSService: ObservableObject {
     private var lastEventIndex = 0
 
     private let mentraOSScheme = "mentraos://"
-    private let webhookURL = "https://phonegpt-webhook.systemd.diskstation.me:3001"
+    private let webhookURL = "https://phonegpt-webhook.systemd.diskstation.me"
 
     var onVoiceInput: ((String) -> Void)?
     var onGesture: ((GlassesGesture) -> Void)?
