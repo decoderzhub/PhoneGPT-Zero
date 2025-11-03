@@ -93,14 +93,21 @@ async def mentraos_webhook(event: WebhookEvent, background_tasks: BackgroundTask
     print(f"📨 WEBHOOK RECEIVED")
     print(f"   Type: {event.type}")
     print(f"   Device: {event.device_id}")
+    print(f"   Data: {event.data}")
     print(f"   Timestamp: {datetime.utcnow().isoformat()}")
     print("="*50 + "\n")
 
-    logger.info(f"Received webhook: type={event.type}, device={event.device_id}")
+    logger.info(f"Received webhook: type={event.type}, device={event.device_id}, data={event.data}")
 
     event_queue.append(event)
 
-    if event.type == "app_activated":
+    if event.type == "session_request":
+        print(f"🔌 SESSION REQUEST")
+        print(f"   This is MentraOS trying to connect!")
+        print(f"   Data: {event.data}\n")
+        logger.info(f"Session request received: {event.data}")
+
+    elif event.type == "app_activated":
         device_id = event.device_id or "default"
         active_sessions[device_id] = {
             "activated_at": datetime.utcnow().isoformat(),
@@ -134,6 +141,12 @@ async def mentraos_webhook(event: WebhookEvent, background_tasks: BackgroundTask
         print(f"   Type: {gesture_type}")
         print(f"   Device: {event.device_id}\n")
         logger.info(f"Gesture received: {gesture_type}")
+
+    else:
+        print(f"❓ UNKNOWN EVENT TYPE: {event.type}")
+        print(f"   Data: {event.data}")
+        print(f"   Device: {event.device_id}\n")
+        logger.warning(f"Unknown event type: {event.type}, data: {event.data}")
 
     return JSONResponse({
         "status": "received",
