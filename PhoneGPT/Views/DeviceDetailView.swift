@@ -82,10 +82,10 @@ struct DeviceDetailView: View {
 
                 SectionHeader(title: "Features")
 
-                FeatureRow(icon: "text.bubble", title: "AI Chat", description: "Access PhoneGPT conversations")
-                FeatureRow(icon: "message", title: "Slack & Teams", description: "Read and reply to messages")
-                FeatureRow(icon: "house", title: "Smart Home", description: "Control connected devices")
-                FeatureRow(icon: "mic", title: "Voice Control", description: "Hands-free interaction")
+                DeviceFeatureRow(icon: "text.bubble", title: "AI Chat", description: "Access PhoneGPT conversations")
+                DeviceFeatureRow(icon: "message", title: "Slack & Teams", description: "Read and reply to messages")
+                DeviceFeatureRow(icon: "house", title: "Smart Home", description: "Control connected devices")
+                DeviceFeatureRow(icon: "mic", title: "Voice Control", description: "Hands-free interaction")
             }
             .padding(20)
             .background(Color(UIColor.secondarySystemBackground))
@@ -223,7 +223,7 @@ struct SectionHeader: View {
     }
 }
 
-struct FeatureRow: View {
+struct DeviceFeatureRow: View {
     let icon: String
     let title: String
     let description: String
