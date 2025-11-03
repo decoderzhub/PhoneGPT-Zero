@@ -9,14 +9,18 @@ import SwiftUI
 
 struct DevicesView: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var deviceService = DeviceService()
     @State private var devices: [ConnectedDevice] = []
     @State private var showingAddDevice = false
     @State private var selectedDevice: ConnectedDevice?
+    @State private var isLoading = true
 
     var body: some View {
         NavigationStack {
             ZStack {
-                if devices.isEmpty {
+                if isLoading {
+                    ProgressView("Loading devices...")
+                } else if devices.isEmpty {
                     VStack(spacing: 24) {
                         Image(systemName: "display.trianglebadge.exclamationmark")
                             .font(.system(size: 64))
@@ -76,15 +80,45 @@ struct DevicesView: View {
                 AddDeviceView { device in
                     devices.append(device)
                     showingAddDevice = false
+                    Task {
+                        try? await deviceService.saveDevice(device)
+                    }
                 }
             }
             .sheet(item: $selectedDevice) { device in
-                DeviceDetailView(device: device)
+                DeviceDetailView(device: device, onUpdate: { updatedDevice in
+                    if let index = devices.firstIndex(where: { $0.id == updatedDevice.id }) {
+                        devices[index] = updatedDevice
+                        Task {
+                            try? await deviceService.updateDevice(updatedDevice)
+                        }
+                    }
+                })
+            }
+            .task {
+                await loadDevices()
             }
         }
     }
 
+    private func loadDevices() async {
+        isLoading = true
+        do {
+            devices = try await deviceService.fetchAllDevices()
+        } catch {
+            print("Error loading devices: \(error)")
+            devices = []
+        }
+        isLoading = false
+    }
+
     private func deleteDevices(at offsets: IndexSet) {
+        for index in offsets {
+            let device = devices[index]
+            Task {
+                try? await deviceService.deleteDevice(device)
+            }
+        }
         devices.remove(atOffsets: offsets)
     }
 }
@@ -128,10 +162,19 @@ struct DeviceRow: View {
 }
 
 struct ConnectedDevice: Identifiable, Equatable {
-    let id = UUID()
+    var id: UUID
     var name: String
     var type: DeviceType
     var isConnected: Bool
+    var deviceId: String
+
+    init(id: UUID = UUID(), name: String, type: DeviceType, isConnected: Bool, deviceId: String? = nil) {
+        self.id = id
+        self.name = name
+        self.type = type
+        self.isConnected = isConnected
+        self.deviceId = deviceId ?? "\(type.rawValue)_\(id.uuidString)"
+    }
 
     static func == (lhs: ConnectedDevice, rhs: ConnectedDevice) -> Bool {
         lhs.id == rhs.id
@@ -148,10 +191,10 @@ struct ConnectedDevice: Identifiable, Equatable {
         }
     }
 
-    enum DeviceType {
-        case evenRealities
-        case smartHome
-        case wearable
+    enum DeviceType: String, Codable {
+        case evenRealities = "even_realities"
+        case smartHome = "smart_home"
+        case wearable = "wearable"
     }
 }
 

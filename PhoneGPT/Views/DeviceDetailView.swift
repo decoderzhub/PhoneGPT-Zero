@@ -10,6 +10,7 @@ import SwiftUI
 struct DeviceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State var device: ConnectedDevice
+    let onUpdate: (ConnectedDevice) -> Void
     @State private var isConnecting = false
     @State private var showingConnectionError = false
     @State private var connectionError: String?
@@ -125,6 +126,7 @@ struct DeviceDetailView: View {
                 VStack(spacing: 12) {
                     Button(action: {
                         device.isConnected = true
+                        onUpdate(device)
                     }) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
@@ -214,6 +216,7 @@ struct DeviceDetailView: View {
 
     private func disconnectDevice() {
         device.isConnected = false
+        onUpdate(device)
     }
 
     private func openMentraOSApp() {
@@ -292,5 +295,5 @@ struct InstructionStep: View {
         name: "Even Realities G1",
         type: .evenRealities,
         isConnected: false
-    ))
+    ), onUpdate: { _ in })
 }
