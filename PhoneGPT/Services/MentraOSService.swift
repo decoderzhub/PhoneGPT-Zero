@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import UIKit
 
 struct WebhookEvent: Codable {
     let type: String
