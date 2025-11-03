@@ -66,22 +66,9 @@ struct DeviceDetailView: View {
             } message: {
                 Text(connectionError ?? "Failed to connect to device")
             }
-            .onAppear {
-                checkDeviceConnection()
-            }
         }
     }
 
-    private func checkDeviceConnection() {
-        if device.type == .evenRealities {
-            if let url = URL(string: "mentraos://"),
-               UIApplication.shared.canOpenURL(url) {
-                device.isConnected = true
-            } else {
-                device.isConnected = false
-            }
-        }
-    }
 
     private var evenRealitiesContent: some View {
         VStack(spacing: 24) {
@@ -135,26 +122,43 @@ struct DeviceDetailView: View {
                     }
                 }
             } else {
-                Button(action: {
-                    connectDevice()
-                }) {
-                    HStack {
-                        if isConnecting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                            Text("Connect to Even Realities")
+                VStack(spacing: 12) {
+                    Button(action: {
+                        device.isConnected = true
+                    }) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("I've Installed & Paired MentraOS")
                         }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.green)
+                        .cornerRadius(12)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(isConnecting ? Color.gray : Color.blue)
-                    .cornerRadius(12)
+
+                    Button(action: {
+                        connectDevice()
+                    }) {
+                        HStack {
+                            if isConnecting {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                            } else {
+                                Image(systemName: "arrow.down.app")
+                                Text("Install MentraOS")
+                            }
+                        }
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(12)
+                    }
+                    .disabled(isConnecting)
                 }
-                .disabled(isConnecting)
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -199,22 +203,11 @@ struct DeviceDetailView: View {
     private func connectDevice() {
         isConnecting = true
 
-        if let url = URL(string: "mentraos://"),
-           UIApplication.shared.canOpenURL(url) {
-            device.isConnected = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isConnecting = false
-            UIApplication.shared.open(url)
-        } else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                isConnecting = false
 
-                if let url = URL(string: "https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193") {
-                    UIApplication.shared.open(url)
-                    connectionError = "Please install MentraOS from the App Store, then pair your Even Realities glasses within MentraOS before returning to PhoneGPT."
-                } else {
-                    connectionError = "Unable to open App Store. Please search for 'Mentra' in the App Store."
-                }
-                showingConnectionError = true
+            if let url = URL(string: "https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193") {
+                UIApplication.shared.open(url)
             }
         }
     }

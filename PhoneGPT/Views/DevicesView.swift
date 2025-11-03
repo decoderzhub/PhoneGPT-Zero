@@ -81,22 +81,6 @@ struct DevicesView: View {
             .sheet(item: $selectedDevice) { device in
                 DeviceDetailView(device: device)
             }
-            .onAppear {
-                checkDeviceConnections()
-            }
-        }
-    }
-
-    private func checkDeviceConnections() {
-        for index in devices.indices {
-            if devices[index].type == .evenRealities {
-                if let url = URL(string: "mentraos://"),
-                   UIApplication.shared.canOpenURL(url) {
-                    devices[index].isConnected = true
-                } else {
-                    devices[index].isConnected = false
-                }
-            }
         }
     }
 
