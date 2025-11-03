@@ -1,219 +1,187 @@
-# Quick Start Guide
+# Quick Start Guide - MentraOS Integration
 
-Get the PhoneGPT webhook server running in 5 minutes.
+Get PhoneGPT running with MentraOS in 10 minutes.
 
-## Option 1: Local Development (Fastest)
+## Prerequisites
 
-### Prerequisites
-- Python 3.11+ installed
-- pip installed
+- Node.js 18+ installed
+- MentraOS app on your phone
+- Glasses paired with MentraOS
 
-### Steps
+## Step 1: Register App in MentraOS Console
+
+1. Go to https://console.mentra.glass
+2. Sign in with your MentraOS account
+3. Click "Create App"
+4. Fill in:
+   - Package Name: `com.codeofhonor.phonegpt`
+   - App Name: `PhoneGPT AI Assistant`
+   - Public URL: (use ngrok URL from Step 3)
+5. Add Permission: MICROPHONE
+6. **Copy your API Key**
+
+## Step 2: Configure Environment
 
 ```bash
-# 1. Navigate to backend folder
 cd backend
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run server
-python main.py
-
-# 4. Test in another terminal
-curl http://localhost:8000/health
+cp .env.example .env
+nano .env
 ```
 
-Server is now running at `http://localhost:8000`
+Add your API key:
+```env
+MENTRAOS_API_KEY=msk_live_your_key_here
+PACKAGE_NAME=com.codeofhonor.phonegpt
+PORT=3000
+API_PORT=3001
+```
 
-## Option 2: Docker (Recommended)
-
-### Prerequisites
-- Docker installed
-
-### Steps
+## Step 3: Install & Run
 
 ```bash
-# 1. Navigate to backend folder
-cd backend
+# Install dependencies
+npm install
 
-# 2. Build and run with docker-compose
-docker-compose up -d
-
-# 3. Check logs
-docker-compose logs -f
-
-# 4. Test
-curl http://localhost:8000/health
+# Run in development mode
+npm run dev
 ```
 
-Server is now running at `http://localhost:8000`
+You should see:
+```
+🚀 STARTING PHONEGPT MENTRAOS SERVER
+✅ MentraOS server started on port 3000
+✅ API server started on port 3001
+⏳ Waiting for MentraOS connections...
+```
 
-## Option 3: Docker Manual
+## Step 4: Expose with ngrok
+
+In a new terminal:
 
 ```bash
-# Build image
-docker build -t phonegpt-webhook .
+# Install ngrok
+brew install ngrok  # macOS
 
-# Run container
-docker run -d \
-  --name phonegpt-webhook \
-  -p 8000:8000 \
-  phonegpt-webhook
+# Get a static domain from ngrok.com dashboard
 
-# Check logs
-docker logs -f phonegpt-webhook
-
-# Test
-curl http://localhost:8000/health
+# Run ngrok
+ngrok http --url=your-static-url.ngrok-free.app 3000
 ```
 
-## Testing
+Copy the ngrok URL (e.g., `https://your-static-url.ngrok-free.app`)
 
-### Run automated tests
+## Step 5: Update MentraOS Console
 
-```bash
-# Make executable
-chmod +x test_webhook.sh
+1. Go back to https://console.mentra.glass
+2. Edit your app
+3. Update Public URL to your ngrok URL
+4. Save changes
 
-# Run tests (local)
-./test_webhook.sh http://localhost:8000
+## Step 6: Test Connection
 
-# Run tests (production)
-./test_webhook.sh https://phonegpt-webhook.systemd.diskstation.me
+1. Open **MentraOS app** on your phone
+2. You should see **"PhoneGPT AI Assistant"** in inactive apps
+3. **Toggle it ON**
+
+Check your server logs - you should see:
+```
+🔵 ================================
+📱 NEW SESSION STARTED
+   Session ID: sess_xxxxx
+   User ID: user_xxxxx
+================================
+💬 Displayed welcome message on glasses
 ```
 
-### Manual tests
+## Step 7: Test Voice Input
 
-```bash
-# 1. Health check
-curl http://localhost:8000/health
+1. **Speak into your glasses**: "What's the weather?"
 
-# 2. Post voice input
-curl -X POST http://localhost:8000/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "voice_input",
-    "data": {"transcript": "Test message"},
-    "device_id": "test"
-  }'
-
-# 3. Get events
-curl http://localhost:8000/events?since=0
-
-# 4. Check stats
-curl http://localhost:8000/stats
+Server logs should show:
+```
+🎤 ================================
+VOICE INPUT RECEIVED
+   Transcript: "What's the weather?"
+================================
 ```
 
-## API Endpoints
+2. **Test PhoneGPT iOS app polling:**
 
-Once running, visit:
-- Documentation: http://localhost:8000/docs (Interactive Swagger UI)
-- Alternative docs: http://localhost:8000/redoc
-- Health: http://localhost:8000/health
+Open Xcode, run PhoneGPT, go to Glasses Assistant view.
 
-## Update iOS App for Local Testing
-
-In `MentraOSService.swift`, change:
-
-```swift
-// Production
-private let webhookURL = "https://phonegpt-webhook.systemd.diskstation.me"
-
-// Local testing
-private let webhookURL = "http://localhost:8000"  // Won't work on real device
-private let webhookURL = "http://YOUR_COMPUTER_IP:8000"  // Use this instead
+In logs you should see:
 ```
-
-Find your computer's IP:
-
-```bash
-# macOS
-ipconfig getifaddr en0
-
-# Linux
-hostname -I | awk '{print $1}'
-
-# Windows
-ipconfig
+🔄 Started polling webhook every 2 seconds
+📨 Received event: voice_input
 ```
-
-Then use: `http://192.168.1.XXX:8000`
-
-## Stop Server
-
-### Python
-Press `Ctrl+C`
-
-### Docker Compose
-```bash
-docker-compose down
-```
-
-### Docker Manual
-```bash
-docker stop phonegpt-webhook
-docker rm phonegpt-webhook
-```
-
-## Deploy to Production
-
-Once local testing works, see:
-- **DEPLOYMENT_SYNOLOGY.md** - Deploy to your Synology NAS
-- **MENTRAOS_INTEGRATION.md** - Submit to MentraOS
 
 ## Troubleshooting
 
-### Port 8000 already in use
+### Server won't start
+- Check you have `MENTRAOS_API_KEY` in `.env`
+- Verify API key is correct from console.mentra.glass
+- Check ports 3000 and 3001 are free
+
+### No connection from MentraOS
+- Verify ngrok is running
+- Check Public URL in console.mentra.glass matches ngrok URL
+- Try restarting the app in MentraOS (toggle off/on)
+
+### Voice not working
+- Check microphone permission is added in console.mentra.glass
+- Verify glasses are paired and connected
+- Check server logs for voice input
+
+### iOS app not receiving events
+- Verify webhook URL in `MentraOSService.swift`:
+  ```swift
+  private let webhookURL = "http://YOUR_COMPUTER_IP:3001"
+  ```
+- For ngrok, use: `https://your-static-url.ngrok-free.app:3001`
+
+## Test Endpoints
 
 ```bash
-# Find process using port
-lsof -i :8000  # macOS/Linux
-netstat -ano | findstr :8000  # Windows
+# Health check
+curl http://localhost:3001/health
 
-# Kill process or use different port
-docker run -p 8001:8000 phonegpt-webhook
+# Check events
+curl http://localhost:3001/events?since=0
+
+# Check active sessions
+curl http://localhost:3001/sessions
+
+# Stats
+curl http://localhost:3001/stats
 ```
-
-### Python dependencies fail
-
-```bash
-# Update pip
-pip install --upgrade pip
-
-# Install with verbose output
-pip install -r requirements.txt -v
-```
-
-### Docker build fails
-
-```bash
-# Clean and rebuild
-docker system prune -a
-docker build --no-cache -t phonegpt-webhook .
-```
-
-### Can't access from iPhone
-
-Make sure:
-1. iPhone and computer on same WiFi
-2. Using computer's IP (not localhost)
-3. Firewall allows port 8000
-4. Server is running: `curl http://localhost:8000/health`
 
 ## Next Steps
 
-1. ✅ Get server running locally
-2. ✅ Test with curl/test script
-3. ✅ Update iOS app to use local URL
-4. ✅ Test iOS app polling
-5. ⏭️ Deploy to Synology (see DEPLOYMENT_SYNOLOGY.md)
-6. ⏭️ Submit to MentraOS (see MENTRAOS_INTEGRATION.md)
+Once working locally:
+1. Deploy to Synology NAS (see DEPLOYMENT_SYNOLOGY.md)
+2. Update iOS app with production webhook URL
+3. Test end-to-end voice commands
+4. Share app with testers
 
-## Support
+## Quick Reference
 
-If stuck:
-1. Check server logs: `docker logs phonegpt-webhook`
-2. Verify health endpoint works
-3. Test with curl before testing with app
-4. Review README.md for detailed documentation
+**Server Logs:**
+```bash
+npm run dev  # Watch logs in real-time
+```
+
+**Key Ports:**
+- 3000: MentraOS SDK endpoint
+- 3001: API endpoint for PhoneGPT iOS app
+
+**Key Files:**
+- `src/index.ts` - Main server code
+- `.env` - Configuration
+- `package.json` - Dependencies
+
+**Key URLs:**
+- MentraOS Console: https://console.mentra.glass
+- ngrok Dashboard: https://dashboard.ngrok.com
+
+**Deployment:**
+See `DEPLOYMENT_SYNOLOGY.md` for production deployment to your NAS.
