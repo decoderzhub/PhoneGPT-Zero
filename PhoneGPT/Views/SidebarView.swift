@@ -16,6 +16,8 @@ struct SidebarView: View {
 
     @State private var sessionToDelete: ChatSession?
     @State private var showingDeleteConfirmation = false
+    @State private var showingDevices = false
+    @State private var showingSources = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -43,28 +45,59 @@ struct SidebarView: View {
 
             Divider()
 
+            VStack(spacing: 0) {
+                Button(action: { showingDevices = true }) {
+                    HStack {
+                        Image(systemName: "display")
+                        Text("Devices")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .background(Color(UIColor.systemBackground))
+
+                Divider()
+                    .padding(.leading, 16)
+
+                Button(action: { showingSources = true }) {
+                    HStack {
+                        Image(systemName: "doc.text")
+                        Text("Sources")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .background(Color(UIColor.systemBackground))
+            }
+
+            Divider()
+
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(sessions, id: \.id) { session in
-                        HStack(spacing: 0) {
-                            SessionRow(
-                                session: session,
-                                isSelected: selectedSession?.id == session.id
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedSession = session
-                            }
-
-                            Button(action: {
+                        SessionRow(
+                            session: session,
+                            isSelected: selectedSession?.id == session.id,
+                            onDelete: {
                                 sessionToDelete = session
                                 showingDeleteConfirmation = true
-                            }) {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 40, height: 40)
                             }
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedSession = session
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
@@ -95,26 +128,42 @@ struct SidebarView: View {
         } message: {
             Text("This will permanently delete this chat session and all its messages.")
         }
+        .sheet(isPresented: $showingDevices) {
+            DevicesView()
+        }
+        .sheet(isPresented: $showingSources) {
+            SourcesView()
+        }
     }
 }
 
 struct SessionRow: View {
     let session: ChatSession
     let isSelected: Bool
+    let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(session.title ?? "New Chat")
-                .font(.system(size: 15, weight: .medium))
-                .lineLimit(2)
-                .foregroundColor(isSelected ? .white : .primary)
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(session.title ?? "New Chat")
+                    .font(.system(size: 15, weight: .medium))
+                    .lineLimit(2)
+                    .foregroundColor(isSelected ? .white : .primary)
 
-            Text(session.updatedAt?.formatted(date: .abbreviated, time: .shortened) ?? "")
-                .font(.system(size: 12))
-                .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                Text(session.updatedAt?.formatted(date: .abbreviated, time: .shortened) ?? "")
+                    .font(.system(size: 12))
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onDelete) {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .red)
+            }
+            .buttonStyle(.plain)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(isSelected ? Color.blue : Color(UIColor.systemBackground))
         .cornerRadius(8)
     }

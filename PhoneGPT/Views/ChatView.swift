@@ -72,6 +72,16 @@ struct ChatView: View {
                 }
 
                 chatContent
+                    .gesture(
+                        DragGesture()
+                            .onEnded { value in
+                                if value.translation.width > 100 {
+                                    withAnimation {
+                                        showingSettings = true
+                                    }
+                                }
+                            }
+                    )
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

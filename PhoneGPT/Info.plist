@@ -172,6 +172,10 @@
     <string>PhoneGPT uses the microphone for voice commands.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>PhoneGPT needs access to your photo library for file uploads.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>PhoneGPT needs Bluetooth to connect to Even Realities smart glasses and other devices.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>PhoneGPT needs Bluetooth to communicate with connected devices.</string>
 
     <!-- Local storage access -->
     <key>NSFileProviderDomainUsageDescription</key>
