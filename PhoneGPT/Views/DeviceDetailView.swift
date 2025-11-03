@@ -148,7 +148,7 @@ struct DeviceDetailView: View {
                     .font(.headline)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    InstructionStep(number: 1, text: "Install MentraOS from TestFlight")
+                    InstructionStep(number: 1, text: "Install MentraOS from the App Store")
                     InstructionStep(number: 2, text: "Power on your Even Realities G1 glasses")
                     InstructionStep(number: 3, text: "Tap 'Connect' to begin pairing")
                     InstructionStep(number: 4, text: "Follow on-screen instructions to complete setup")
@@ -188,11 +188,10 @@ struct DeviceDetailView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             isConnecting = false
 
-            if let url = URL(string: "https://testflight.apple.com/join/yUdgUsd8"),
-               UIApplication.shared.canOpenURL(url) {
+            if let url = URL(string: "https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193") {
                 UIApplication.shared.open(url)
             } else {
-                connectionError = "Please install MentraOS from TestFlight first.\n\nTestFlight link: https://testflight.apple.com/join/yUdgUsd8"
+                connectionError = "Unable to open App Store. Please search for 'Mentra' in the App Store."
                 showingConnectionError = true
             }
         }
@@ -207,7 +206,7 @@ struct DeviceDetailView: View {
            UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url)
         } else {
-            connectionError = "MentraOS app not found. Please install it from TestFlight."
+            connectionError = "MentraOS app not found. Please install it from the App Store."
             showingConnectionError = true
         }
     }
