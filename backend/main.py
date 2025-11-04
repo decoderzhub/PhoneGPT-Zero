@@ -21,6 +21,12 @@ from mentraos_sdk.fastapi_integration import MentraOSApp
 from mentraos_sdk.layouts import TextWall, DoubleTextWall
 from mentraos_sdk.types import TranscriptionData
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
