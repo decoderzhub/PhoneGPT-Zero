@@ -11,9 +11,10 @@ from datetime import datetime
 from enum import Enum
 import sys
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 import uvicorn
 
@@ -61,6 +62,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add exception handler for better debugging
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print("\n" + "="*50)
+    print("❌ VALIDATION ERROR")
+    print(f"   URL: {request.url}")
+    print(f"   Method: {request.method}")
+    print(f"   Errors: {exc.errors()}")
+    print(f"   Body: {exc.body}")
+    print("="*50 + "\n")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": str(exc.body)
+        }
+    )
 
 
 # ===== State Management =====
