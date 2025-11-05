@@ -88,3 +88,7 @@ temp/
 tmp/
 cache/*.mlmodel
 .env
+
+node_modules/å
+
+phonegpt.db
